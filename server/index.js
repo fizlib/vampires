@@ -223,17 +223,40 @@ class Game {
   startTimer(seconds, callback) {
     if (this.interval) clearInterval(this.interval);
     this.timer = seconds;
+    this.timerCallback = callback; // Store callback for skip
     this.broadcastUpdate();
 
     this.interval = setInterval(() => {
       this.timer--;
       if (this.timer <= 0) {
         clearInterval(this.interval);
+        this.timerCallback = null;
         callback();
       }
       // Sync timer occasionally or every second
       io.to(this.code).emit('timer_update', this.timer);
     }, 1000);
+  }
+
+  skipTimer() {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.timer = 0;
+      io.to(this.code).emit('timer_update', 0);
+      if (this.timerCallback) {
+        const cb = this.timerCallback;
+        this.timerCallback = null;
+        cb();
+      }
+    }
+  }
+
+  endGame(winner = 'Host Ended') {
+    if (this.interval) clearInterval(this.interval);
+    this.state = 'GAME_OVER';
+    this.winner = winner;
+    this.logs.push('The host has ended the game.');
+    this.broadcastUpdate();
   }
 
   broadcastUpdate() {
@@ -358,6 +381,24 @@ io.on('connection', (socket) => {
     if (game && game.state === 'DAY_VOTE' && player && player.alive) {
       game.votes[player.id] = targetId;
       game.broadcastUpdate();
+    }
+  });
+
+  // --- HOST: SKIP TIMER ---
+  socket.on('skip_timer', ({ code }) => {
+    const game = games[code];
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id && game.state !== 'LOBBY' && game.state !== 'GAME_OVER') {
+      game.skipTimer();
+    }
+  });
+
+  // --- HOST: END GAME ---
+  socket.on('end_game', ({ code }) => {
+    const game = games[code];
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id) {
+      game.endGame();
     }
   });
 });

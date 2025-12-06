@@ -1,0 +1,431 @@
+:root {
+  --bg-color: #121212;
+  --card-bg: #1e1e24;
+  --primary: #581b98;
+  /* Purple */
+  --secondary: #9c1de7;
+  --accent: #f3558e;
+  /* Pink/Red */
+  --danger: #e94560;
+  --text: #e0e0e0;
+  --muted: #888;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-color);
+  color: var(--text);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Layout */
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.center-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.row {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Typography */
+.title-blood {
+  font-size: 4rem;
+  color: var(--danger);
+  letter-spacing: 5px;
+  text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+  margin-bottom: 30px;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 10px 0;
+}
+
+/* Components */
+.card {
+  background: var(--card-bg);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.menu-card {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.input-modern {
+  background: #2a2a35;
+  border: 1px solid #444;
+  color: white;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input-modern:focus {
+  outline: 2px solid var(--secondary);
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-row input {
+  width: 60px;
+  padding: 5px;
+  background: #2a2a35;
+  border: none;
+  color: white;
+}
+
+/* Buttons */
+button {
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.1s;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: linear-gradient(45deg, var(--primary), var(--secondary));
+  color: white;
+}
+
+.btn-secondary {
+  background: #333;
+  color: white;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-small {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  background: #444;
+  color: #fff;
+}
+
+.btn-large {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.2rem;
+  margin-top: 20px;
+}
+
+.btn-kick {
+  background: transparent;
+  color: var(--danger);
+  font-size: 1.2rem;
+  padding: 0 5px;
+}
+
+.btn-vote {
+  background: var(--danger);
+  color: white;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}
+
+.btn-action {
+  background: var(--secondary);
+  color: white;
+  width: 100%;
+  margin-top: 5px;
+}
+
+/* Lobby */
+.lobby-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.highlight-code {
+  color: var(--accent);
+  font-family: monospace;
+  font-size: 2rem;
+  background: #222;
+  padding: 0 10px;
+  border-radius: 4px;
+}
+
+.player-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.player-chip {
+  background: var(--card-bg);
+  padding: 10px 15px;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #333;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  background: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.waiting-text {
+  margin-top: 40px;
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+  width: 100%;
+}
+
+/* Game Board */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  background: #000;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #333;
+}
+
+.phase-indicator {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.phase-label {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.timer-badge {
+  background: #333;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.role-badge {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.role-badge.good {
+  color: #00e676;
+}
+
+.role-badge.evil {
+  color: #ff1744;
+}
+
+.role-badge.neutral {
+  color: #ffea00;
+}
+
+/* Host Controls */
+.host-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-skip {
+  background: linear-gradient(45deg, #00897b, #26a69a);
+  color: white;
+}
+
+.btn-skip:hover {
+  background: linear-gradient(45deg, #00695c, #00897b);
+}
+
+.btn-end {
+  background: linear-gradient(45deg, #c62828, #e53935);
+  color: white;
+}
+
+.btn-end:hover {
+  background: linear-gradient(45deg, #b71c1c, #c62828);
+}
+
+.game-board {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+.players-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.game-player-card {
+  background: var(--card-bg);
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  position: relative;
+}
+
+.game-player-card.me {
+  border-color: var(--secondary);
+}
+
+.game-player-card.dead {
+  opacity: 0.5;
+  filter: grayscale(100%);
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.vote-count {
+  font-size: 0.8rem;
+  color: var(--danger);
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.panel {
+  background: #18181b;
+  padding: 10px;
+  border-radius: 8px;
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.scroll-box {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  padding: 5px;
+  color: #ccc;
+}
+
+.private-text {
+  color: #69f0ae;
+  font-family: monospace;
+}
+
+.log-entry {
+  margin-bottom: 5px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 2px;
+}
+
+.banner-dead {
+  background: #b71c1c;
+  color: white;
+  padding: 10px;
+  text-align: center;
+  font-weight: bold;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background: var(--card-bg);
+  padding: 40px;
+  border-radius: 12px;
+  text-align: center;
+  border: 2px solid var(--accent);
+}
+
+/* Username Entry */
+.username-card {
+  width: 350px;
+  text-align: center;
+}
+
+.hint-text {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.button-row button {
+  flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .game-board {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    height: 150px;
+  }
+}
