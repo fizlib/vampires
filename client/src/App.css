@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* Dark Theme (Night) - Default */
 :root {
   --bg-color: #121212;
@@ -162,7 +168,7 @@ body {
 .container {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 10px 20px;
 }
 
 .center-screen {
