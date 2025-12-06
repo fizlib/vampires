@@ -78,6 +78,11 @@ class Game {
     });
   }
 
+  start() {
+    this.assignRoles();
+    this.startNight();
+  }
+
   startNight() {
     this.state = 'NIGHT';
     this.round++;
