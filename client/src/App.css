@@ -1210,3 +1210,108 @@ button:active {
   font-size: 0.85rem;
   font-style: italic;
 }
+
+/* Role Change Section (Host Modal) */
+.role-change-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+}
+
+.role-change-section h4 {
+  margin: 0 0 15px 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.role-change-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn-role-change {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 2px solid var(--input-border);
+  background: var(--panel-bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-role-change:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-role-change.good {
+  border-color: rgba(156, 29, 231, 0.4);
+}
+
+.btn-role-change.good:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+  color: white;
+}
+
+.btn-role-change.evil {
+  border-color: rgba(233, 69, 96, 0.4);
+}
+
+.btn-role-change.evil:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b71c1c, var(--danger));
+  border-color: transparent;
+  color: white;
+}
+
+.btn-role-change.neutral {
+  border-color: rgba(136, 136, 136, 0.4);
+}
+
+.btn-role-change.neutral:hover:not(:disabled) {
+  background: linear-gradient(135deg, #555, #777);
+  border-color: transparent;
+  color: white;
+}
+
+.btn-role-change.active {
+  opacity: 0.5;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.btn-role-change.active.good {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+  color: white;
+}
+
+.btn-role-change.active.evil {
+  background: linear-gradient(135deg, #b71c1c, var(--danger));
+  border-color: transparent;
+  color: white;
+}
+
+.btn-role-change.active.neutral {
+  background: linear-gradient(135deg, #555, #777);
+  border-color: transparent;
+  color: white;
+}
+
+.btn-role-change:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}

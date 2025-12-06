@@ -281,6 +281,10 @@ function App() {
     socket.emit('get_player_role', { code, targetId });
   };
 
+  const changePlayerRole = (targetId, newRole) => {
+    socket.emit('change_player_role', { code, targetId, newRole });
+  };
+
   const logout = () => {
     clearSession();
     window.location.reload();
@@ -598,6 +602,29 @@ function App() {
                 Alignment: <strong>{selectedPlayerRole.alignment || 'Unknown'}</strong>
               </p>
             </div>
+
+            {/* Role Change Buttons for Host */}
+            <div className="role-change-section">
+              <h4>Change Role</h4>
+              <div className="role-change-buttons">
+                {['Investigator', 'Lookout', 'Citizen', 'Vampire', 'Jester'].map(role => (
+                  <button
+                    key={role}
+                    className={`btn-role-change ${selectedPlayerRole.role === role ? 'active' : ''} ${role === 'Vampire' ? 'evil' : role === 'Jester' ? 'neutral' : 'good'}`}
+                    onClick={() => changePlayerRole(selectedPlayerRole.playerId, role)}
+                    disabled={selectedPlayerRole.role === role}
+                  >
+                    {role === 'Investigator' && '🔍 '}
+                    {role === 'Lookout' && '👁️ '}
+                    {role === 'Citizen' && '👤 '}
+                    {role === 'Vampire' && '🧛 '}
+                    {role === 'Jester' && '🃏 '}
+                    {role}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button className="btn-secondary" onClick={() => setSelectedPlayerRole(null)}>Close</button>
           </div>
         </div>

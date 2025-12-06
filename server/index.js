@@ -633,6 +633,53 @@ io.on('connection', (socket) => {
       }
     }
   });
+
+  // --- HOST: CHANGE PLAYER ROLE ---
+  socket.on('change_player_role', ({ code, targetId, newRole }) => {
+    const game = games[code];
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id) {
+      const target = game.players.find(p => p.id === targetId);
+      if (target) {
+        // Role alignment mapping
+        const roleAlignments = {
+          'Investigator': 'good',
+          'Lookout': 'good',
+          'Citizen': 'good',
+          'Vampire': 'evil',
+          'Jester': 'neutral'
+        };
+
+        // Update the target's role
+        target.role = newRole;
+        target.alignment = roleAlignments[newRole] || 'good';
+
+        // Send updated role info to the target player
+        if (target.socketId) {
+          io.to(target.socketId).emit('role_info', {
+            role: target.role,
+            alignment: target.alignment
+          });
+          io.to(target.socketId).emit('private_message', `🎭 Your role has been changed to ${newRole}!`);
+        }
+
+        // Confirm to the host
+        socket.emit('player_role_info', {
+          playerId: target.id,
+          name: target.name,
+          role: target.role,
+          alignment: target.alignment,
+          isNPC: target.isNPC
+        });
+
+        // Log the change (only visible to host/server)
+        console.log(`Host changed ${target.name}'s role to ${newRole}`);
+
+        // Broadcast update to refresh vampire teammate visibility etc.
+        game.broadcastUpdate();
+      }
+    }
+  });
 });
 
 // Listen on 0.0.0.0 to accept connections from all network interfaces
