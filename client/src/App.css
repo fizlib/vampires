@@ -1408,3 +1408,23 @@ button:active {
   margin-top: 5px;
   font-weight: bold;
 }
+
+/* Status Indicators */
+.status-text {
+  margin: 10px 0 0 0;
+  color: var(--muted);
+}
+
+.status-text strong {
+  margin-left: 5px;
+}
+
+.status-alive {
+  color: #26a69a;
+  text-transform: uppercase;
+}
+
+.status-dead {
+  color: #e53935;
+  text-transform: uppercase;
+}

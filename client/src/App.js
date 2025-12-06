@@ -309,6 +309,10 @@ function App() {
     socket.emit('change_player_role', { code, targetId, newRole });
   };
 
+  const changePlayerAliveStatus = (targetId, isAlive) => {
+    socket.emit('set_player_alive_status', { code, targetId, alive: isAlive });
+  };
+
   const logout = () => {
     clearSession();
     window.location.reload();
@@ -641,6 +645,12 @@ function App() {
               <p className="alignment-text">
                 Alignment: <strong>{selectedPlayerRole.alignment || 'Unknown'}</strong>
               </p>
+              {/* New Status Display */}
+              <p className="status-text">
+                Status: <strong className={selectedPlayerRole.alive ? 'status-alive' : 'status-dead'}>
+                  {selectedPlayerRole.alive ? 'Alive' : 'Dead'}
+                </strong>
+              </p>
             </div>
 
             {/* Role Change Buttons for Host */}
@@ -662,6 +672,29 @@ function App() {
                     {role}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Kill/Revive Buttons for Host */}
+            <div className="role-change-section" style={{ marginTop: '1rem' }}>
+              <h4>Lifecycle</h4>
+              <div className="role-change-buttons">
+                <button
+                  className="btn-role-change bad"
+                  style={{ background: 'var(--danger)', color: 'white', borderColor: 'var(--danger)' }}
+                  onClick={() => changePlayerAliveStatus(selectedPlayerRole.playerId, false)}
+                  disabled={!selectedPlayerRole.alive}
+                >
+                  💀 Kill
+                </button>
+                <button
+                  className="btn-role-change good"
+                  style={{ background: 'var(--primary)', color: 'white', borderColor: 'var(--primary)' }}
+                  onClick={() => changePlayerAliveStatus(selectedPlayerRole.playerId, true)}
+                  disabled={selectedPlayerRole.alive}
+                >
+                  😇 Revive
+                </button>
               </div>
             </div>
 

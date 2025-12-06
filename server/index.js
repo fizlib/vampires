@@ -654,7 +654,8 @@ io.on('connection', (socket) => {
           name: target.name,
           role: target.role,
           alignment: target.alignment,
-          isNPC: target.isNPC
+          isNPC: target.isNPC,
+          alive: target.alive
         });
       }
     }
@@ -695,13 +696,52 @@ io.on('connection', (socket) => {
           name: target.name,
           role: target.role,
           alignment: target.alignment,
-          isNPC: target.isNPC
+          isNPC: target.isNPC,
+          alive: target.alive
         });
 
         // Log the change (only visible to host/server)
         console.log(`Host changed ${target.name}'s role to ${newRole}`);
 
         // Broadcast update to refresh vampire teammate visibility etc.
+        game.broadcastUpdate();
+      }
+    }
+  });
+
+  // --- HOST: KILL/REVIVE PLAYER ---
+  socket.on('set_player_alive_status', ({ code, targetId, alive }) => {
+    const game = games[code];
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id) {
+      const target = game.players.find(p => p.id === targetId);
+      if (target) {
+        target.alive = alive;
+
+        // Notify the player
+        if (target.socketId) {
+          const msg = alive
+            ? "😇 You have been revived by the host!"
+            : "💀 You have been killed by the host!";
+          io.to(target.socketId).emit('private_message', msg);
+        }
+
+        // Update host modal view
+        socket.emit('player_role_info', {
+          playerId: target.id,
+          name: target.name,
+          role: target.role,
+          alignment: target.alignment,
+          isNPC: target.isNPC,
+          alive: target.alive
+        });
+
+        // Log to game log
+        const logMsg = alive
+          ? `The host revived ${target.name}.`
+          : `The host struck down ${target.name}.`;
+        game.logs.push(logMsg);
+
         game.broadcastUpdate();
       }
     }
