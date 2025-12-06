@@ -967,6 +967,37 @@ button:active {
   }
 }
 
+/* Vampire Vote Count Badge */
+.vampire-vote-count-badge {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  white-space: nowrap;
+  z-index: 10;
+  background: linear-gradient(135deg, #8e0000, #c62828);
+  color: #ffcccc;
+  box-shadow: 0 2px 10px rgba(142, 0, 0, 0.6);
+  border: 1px solid #ff6b6b;
+  animation: voteCountGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes voteCountGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 2px 10px rgba(142, 0, 0, 0.6);
+  }
+
+  50% {
+    box-shadow: 0 2px 15px rgba(198, 40, 40, 0.9);
+  }
+}
+
 /* Role Configuration Panel */
 .role-config-panel {
   background: var(--card-bg);

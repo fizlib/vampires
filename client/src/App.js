@@ -622,6 +622,12 @@ function App() {
               {voteTarget === p.id && isVoting && (
                 <div className="target-badge vote-target-badge">🗳️ Your Vote</div>
               )}
+              {/* Vampire vote count badge - visible to vampires during turning nights */}
+              {myRole?.role === 'Vampire' && isNight && canTurn && !p.isVampire && p.vampireVotes > 0 && (
+                <div className="vampire-vote-count-badge">
+                  🩸 {p.vampireVotes} vote{p.vampireVotes > 1 ? 's' : ''}
+                </div>
+              )}
 
               <div className="card-top">
                 <span

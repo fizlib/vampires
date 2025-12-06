@@ -559,8 +559,23 @@ io.on('connection', (socket) => {
           socket.emit('private_message', 'Cannot turn a fellow vampire!');
           return;
         }
+
+        // Notify all vampires about this vote (only if there are 2+ vampires)
+        const aliveVampires = game.players.filter(p => p.role === 'Vampire' && p.alive);
+        if (aliveVampires.length > 1 && target) {
+          aliveVampires.forEach(vamp => {
+            if (vamp.socketId && vamp.id !== player.id) {
+              io.to(vamp.socketId).emit('private_message', `🧛 ${player.name} voted to turn ${target.name}`);
+            }
+          });
+        }
       }
       game.nightActions[player.id] = { ...action, actorId: player.id };
+
+      // Broadcast update to show vote counts for vampires
+      if (action.type === 'BITE') {
+        game.broadcastUpdate();
+      }
     }
   });
 
