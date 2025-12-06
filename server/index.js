@@ -531,6 +531,8 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3001, () => {
-  console.log('Server running on 3001');
+// Listen on 0.0.0.0 to accept connections from all network interfaces
+// This allows other devices on the network to connect via your IP address
+server.listen(3001, '0.0.0.0', () => {
+  console.log('Server running on port 3001 (accessible from all interfaces)');
 });

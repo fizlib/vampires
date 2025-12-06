@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 
-const socket = io('http://localhost:3001');
+// Dynamically connect to the server using the current hostname
+// This allows the app to work both on localhost and when accessed via IP address
+const socket = io(`http://${window.location.hostname}:3001`);
 
 // Random username generator
 const generateRandomUsername = () => {
@@ -137,15 +139,18 @@ function App() {
     });
 
     socket.on('game_update', (data) => {
-      // Reset targets when phase changes
-      if (gameState?.state !== data.state) {
-        if (data.state === 'NIGHT') {
+      // Reset targets when phase changes - use functional update to get current state
+      setGameState(prevState => {
+        // Reset nightTarget when entering a new NIGHT phase (different round)
+        if (data.state === 'NIGHT' && (!prevState || prevState.state !== 'NIGHT' || prevState.round !== data.round)) {
           setNightTarget(null);
-        } else if (data.state === 'DAY_VOTE') {
+        }
+        // Reset voteTarget when entering DAY_VOTE
+        if (data.state === 'DAY_VOTE' && prevState?.state !== 'DAY_VOTE') {
           setVoteTarget(null);
         }
-      }
-      setGameState(data);
+        return data;
+      });
       setTimer(data.timer);
       // Update view based on game state
       if (data.state === 'LOBBY') {
