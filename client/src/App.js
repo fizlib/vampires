@@ -61,16 +61,23 @@ function App() {
   // 1.5 Theme switching based on game phase (Day = light theme, Night = dark theme)
   useEffect(() => {
     const isDayPhase = gameState?.state === 'DAY_DISCUSS' || gameState?.state === 'DAY_VOTE';
+    const isNightPhase = gameState?.state === 'NIGHT';
 
     if (isDayPhase) {
       document.documentElement.setAttribute('data-theme', 'day');
+      document.documentElement.removeAttribute('data-phase');
+    } else if (isNightPhase) {
+      document.documentElement.removeAttribute('data-theme');
+      document.documentElement.setAttribute('data-phase', 'night');
     } else {
       document.documentElement.removeAttribute('data-theme');
+      document.documentElement.removeAttribute('data-phase');
     }
 
     // Cleanup on unmount
     return () => {
       document.documentElement.removeAttribute('data-theme');
+      document.documentElement.removeAttribute('data-phase');
     };
   }, [gameState?.state]);
 

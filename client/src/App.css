@@ -153,8 +153,8 @@
   }
 }
 
-/* Moon icon for night phase */
-:root::before {
+/* Moon icon for night phase - only when data-phase="night" is set */
+[data-phase="night"]::before {
   content: '🌙';
   position: fixed;
   top: 20px;
