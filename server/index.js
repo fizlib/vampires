@@ -312,9 +312,9 @@ class Game {
     let lynchedId = null;
     const livingCount = this.players.filter(p => p.alive).length;
 
-    // Strict majority > 50%
+    // Majority >= 50%
     for (const [targetId, count] of Object.entries(counts)) {
-      if (count > livingCount / 2) {
+      if (count >= livingCount / 2) {
         lynchedId = targetId;
         break;
       }
@@ -410,6 +410,7 @@ class Game {
       state: this.state,
       round: this.round,
       timer: this.timer,
+      winner: this.winner,
       logs: this.logs
     };
 
@@ -429,6 +430,8 @@ class Game {
           alive: p.alive,
           votes: this.countVotesFor(p.id),
           isNPC: p.isNPC || false,
+          role: (this.state === 'GAME_OVER') ? p.role : undefined,
+          alignment: (this.state === 'GAME_OVER') ? p.alignment : undefined,
           // Always show vampire status to other vampires (not just during night)
           isVampire: isVampire ? (p.role === 'Vampire') : undefined,
           // Show vampire turning votes to vampires during night

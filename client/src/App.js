@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 
@@ -69,6 +69,7 @@ function App() {
   const [nightTarget, setNightTarget] = useState(null); // Track who we targeted at night
   const [voteTarget, setVoteTarget] = useState(null); // Track who we voted for
   const [roleRevealed, setRoleRevealed] = useState(false); // Track if role is revealed
+  const prevGameState = useRef(null); // Track previous game state for transitions
 
   // Settings - also persist these
   const [settings, setSettings] = useState(() => {
@@ -101,6 +102,23 @@ function App() {
       socket.emit('rejoin_game', { code: savedCode, playerId: savedId });
     }
   }, []);
+
+  // 1.2 Handle phase transitions/side-effects
+  useEffect(() => {
+    const prev = prevGameState.current;
+    if (!gameState) return;
+
+    // Reset nightTarget when entering a new NIGHT phase (different round)
+    if (gameState.state === 'NIGHT' && (!prev || prev.state !== 'NIGHT' || prev.round !== gameState.round)) {
+      setNightTarget(null);
+    }
+    // Reset voteTarget when entering DAY_VOTE
+    if (gameState.state === 'DAY_VOTE' && prev?.state !== 'DAY_VOTE') {
+      setVoteTarget(null);
+    }
+
+    prevGameState.current = gameState;
+  }, [gameState]);
 
   // 1.5 Theme switching based on game phase (Day = light theme, Night = dark theme)
   useEffect(() => {
@@ -139,18 +157,7 @@ function App() {
     });
 
     socket.on('game_update', (data) => {
-      // Reset targets when phase changes - use functional update to get current state
-      setGameState(prevState => {
-        // Reset nightTarget when entering a new NIGHT phase (different round)
-        if (data.state === 'NIGHT' && (!prevState || prevState.state !== 'NIGHT' || prevState.round !== data.round)) {
-          setNightTarget(null);
-        }
-        // Reset voteTarget when entering DAY_VOTE
-        if (data.state === 'DAY_VOTE' && prevState?.state !== 'DAY_VOTE') {
-          setVoteTarget(null);
-        }
-        return data;
-      });
+      setGameState(data);
       setTimer(data.timer);
       // Update view based on game state
       if (data.state === 'LOBBY') {
@@ -597,9 +604,25 @@ function App() {
 
       {gameState?.state === 'GAME_OVER' &&
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content game-over-panel">
             <h1>GAME OVER</h1>
-            <h2>Winner: {gameState.winner}</h2>
+            <h2 className={`winner-title ${gameState.winner === 'GOOD' ? 'good-win' : gameState.winner === 'EVIL' ? 'evil-win' : 'neutral-win'}`}>
+              Winner: {gameState.winner === 'GOOD' ? 'Citizens' : gameState.winner === 'EVIL' ? 'Vampires' : gameState.winner}
+            </h2>
+
+            <div className="game-over-summary">
+              <h3>Player Roles</h3>
+              <div className="summary-grid">
+                {gameState.players.map(p => (
+                  <div key={p.id} className={`summary-card ${p.alignment || 'unknown'}`}>
+                    <div className="summary-name">{p.name} {p.id === myId && '(You)'}</div>
+                    <div className="summary-role">{p.role || 'Unknown'}</div>
+                    {!p.alive && <div className="summary-dead">👻 Dead</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <button className="btn-primary" onClick={logout}>Back to Menu</button>
           </div>
         </div>
@@ -650,7 +673,7 @@ function App() {
       <div className="game-board">
         <div className="players-section">
           {gameState?.players.map(p => (
-            <div key={p.id} className={`game-player-card ${!p.alive ? 'dead' : ''} ${p.id === myId ? 'me' : ''} ${p.isNPC ? 'npc-card' : ''} ${nightTarget?.targetId === p.id && isNight ? 'target-night' : ''} ${voteTarget === p.id && isVoting ? 'target-vote' : ''} ${p.isVampire && myRole?.role === 'Vampire' ? 'vampire-teammate' : ''}`}>
+            <div key={p.id} className={`game-player-card ${!p.alive ? 'dead' : ''} ${p.id === myId ? 'me' : ''} ${p.isNPC ? 'npc-card' : ''} ${nightTarget?.targetId === p.id && isNight ? 'target-night' : ''} ${p.isVampire && myRole?.role === 'Vampire' ? 'vampire-teammate' : ''}`}>
               {/* Vampire teammate indicator - always visible to vampires */}
               {p.isVampire && myRole?.role === 'Vampire' && p.id !== myId && (
                 <div className="vampire-badge">🧛 Vampire</div>

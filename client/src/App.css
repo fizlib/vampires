@@ -1323,3 +1323,82 @@ button:active {
   transform: none !important;
   box-shadow: none !important;
 }
+
+/* Game Over Summary */
+.game-over-panel {
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.winner-title {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.good-win {
+  color: #26a69a;
+  text-shadow: 0 0 15px rgba(38, 166, 154, 0.5);
+}
+
+.evil-win {
+  color: #e53935;
+  text-shadow: 0 0 15px rgba(229, 57, 53, 0.5);
+}
+
+.neutral-win {
+  color: #ff9800;
+  text-shadow: 0 0 15px rgba(255, 152, 0, 0.5);
+}
+
+.game-over-summary {
+  margin: 20px 0;
+  text-align: left;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.summary-card {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.summary-card.good {
+  border-top: 3px solid #7c3aed;
+}
+
+.summary-card.evil {
+  border-top: 3px solid #e94560;
+}
+
+.summary-card.neutral {
+  border-top: 3px solid #888;
+}
+
+.summary-name {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.summary-role {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.summary-dead {
+  font-size: 0.8rem;
+  color: #e94560;
+  margin-top: 5px;
+  font-weight: bold;
+}
