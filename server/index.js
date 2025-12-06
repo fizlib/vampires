@@ -552,6 +552,24 @@ io.on('connection', (socket) => {
     // We need to find the player ID associated with this socket
     const player = game?.players.find(p => p.socketId === socket.id);
     if (game && game.state === 'NIGHT' && player) {
+      // Handle clearing/uncasting of action
+      if (action.clear || action.targetId === null) {
+        // Check if we're clearing a BITE action - notify other vampires
+        if (action.type === 'BITE' && game.nightActions[player.id]) {
+          const aliveVampires = game.players.filter(p => p.role === 'Vampire' && p.alive);
+          if (aliveVampires.length > 1) {
+            aliveVampires.forEach(vamp => {
+              if (vamp.socketId && vamp.id !== player.id) {
+                io.to(vamp.socketId).emit('private_message', `🧛 ${player.name} cancelled their vote`);
+              }
+            });
+          }
+        }
+        delete game.nightActions[player.id];
+        game.broadcastUpdate();
+        return;
+      }
+
       // Validate BITE action - vampires can't target other vampires
       if (action.type === 'BITE') {
         const target = game.players.find(p => p.id === action.targetId);
@@ -583,7 +601,12 @@ io.on('connection', (socket) => {
     const game = games[code];
     const player = game?.players.find(p => p.socketId === socket.id);
     if (game && game.state === 'DAY_VOTE' && player && player.alive) {
-      game.votes[player.id] = targetId;
+      // Handle unvoting when targetId is null
+      if (targetId === null) {
+        delete game.votes[player.id];
+      } else {
+        game.votes[player.id] = targetId;
+      }
       game.broadcastUpdate();
     }
   });

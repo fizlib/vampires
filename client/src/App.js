@@ -254,6 +254,17 @@ function App() {
 
   const startGame = () => socket.emit('start_game', { code, roleConfig });
   const sendAction = (targetId, type) => {
+    // Toggle behavior: if clicking same target with same action, clear it
+    if (nightTarget?.targetId === targetId && nightTarget?.type === type) {
+      socket.emit('night_action', { code, action: { targetId: null, type, clear: true } });
+      setNightTarget(null);
+      setPrivateMsg(prev => {
+        const newMsg = `> Cancelled action\n` + prev;
+        localStorage.setItem('vampire_private_msg', newMsg);
+        return newMsg;
+      });
+      return;
+    }
     socket.emit('night_action', { code, action: { targetId, type } });
     setNightTarget({ targetId, type });
     const targetPlayer = gameState?.players.find(p => p.id === targetId);
@@ -265,6 +276,12 @@ function App() {
     });
   };
   const vote = (targetId) => {
+    // Toggle behavior: if clicking same target, unvote
+    if (voteTarget === targetId) {
+      socket.emit('day_vote', { code, targetId: null });
+      setVoteTarget(null);
+      return;
+    }
     socket.emit('day_vote', { code, targetId });
     setVoteTarget(targetId);
   };
@@ -646,9 +663,7 @@ function App() {
                   {nightTarget.type === 'BITE' && '🧛 Voted'}
                 </div>
               )}
-              {voteTarget === p.id && isVoting && (
-                <div className="target-badge vote-target-badge">🗳️ Your Vote</div>
-              )}
+
               {/* Vampire vote count badge - visible to vampires during turning nights */}
               {myRole?.role === 'Vampire' && isNight && canTurn && !p.isVampire && p.vampireVotes > 0 && (
                 <div className="vampire-vote-count-badge">
