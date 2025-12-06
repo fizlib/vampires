@@ -78,6 +78,18 @@ function App() {
     };
   });
 
+  // Role configuration for custom games
+  const [roleConfig, setRoleConfig] = useState(() => {
+    const savedRoleConfig = localStorage.getItem('vampire_role_config');
+    return savedRoleConfig ? JSON.parse(savedRoleConfig) : {
+      useDefault: true,
+      Investigator: 1,
+      Lookout: 1,
+      Vampire: 1,
+      Jester: 1
+    };
+  });
+
   // 1. Check for existing session on load and attempt rejoin
   useEffect(() => {
     const savedCode = localStorage.getItem('vampire_code');
@@ -197,6 +209,7 @@ function App() {
     localStorage.removeItem('vampire_role');
     localStorage.removeItem('vampire_private_msg');
     localStorage.removeItem('vampire_settings');
+    localStorage.removeItem('vampire_role_config');
     setView('MENU');
     setCode('');
     setMyId(null);
@@ -222,7 +235,7 @@ function App() {
     setName(finalName);
 
     if (isCreating) {
-      socket.emit('create_game', { name: finalName, settings });
+      socket.emit('create_game', { name: finalName, settings, roleConfig });
     } else {
       socket.emit('join_game', { code: pendingCode, name: finalName });
     }
@@ -234,7 +247,7 @@ function App() {
     }
   };
 
-  const startGame = () => socket.emit('start_game', { code });
+  const startGame = () => socket.emit('start_game', { code, roleConfig });
   const sendAction = (targetId, type) => {
     socket.emit('night_action', { code, action: { targetId, type } });
     setNightTarget({ targetId, type });
@@ -337,6 +350,32 @@ function App() {
 
   if (view === 'LOBBY') {
     const isHost = gameState?.host === myId;
+    const playerCount = gameState?.players?.length || 0;
+
+    // Role configuration helpers
+    const roleData = [
+      { key: 'Investigator', icon: '🔍', alignment: 'good', name: 'Investigator' },
+      { key: 'Lookout', icon: '👁️', alignment: 'good', name: 'Lookout' },
+      { key: 'Vampire', icon: '🧛', alignment: 'evil', name: 'Vampire' },
+      { key: 'Jester', icon: '🃏', alignment: 'neutral', name: 'Jester' }
+    ];
+
+    const totalConfiguredRoles = roleConfig.Investigator + roleConfig.Lookout + roleConfig.Vampire + roleConfig.Jester;
+    const citizenCount = Math.max(0, playerCount - totalConfiguredRoles);
+
+    const updateRoleCount = (roleKey, delta) => {
+      const newCount = Math.max(0, (roleConfig[roleKey] || 0) + delta);
+      const newConfig = { ...roleConfig, [roleKey]: newCount };
+      setRoleConfig(newConfig);
+      localStorage.setItem('vampire_role_config', JSON.stringify(newConfig));
+    };
+
+    const toggleRoleMode = (useDefault) => {
+      const newConfig = { ...roleConfig, useDefault };
+      setRoleConfig(newConfig);
+      localStorage.setItem('vampire_role_config', JSON.stringify(newConfig));
+    };
+
     return (
       <div className="container">
         <div className="lobby-header">
@@ -360,6 +399,97 @@ function App() {
           <button className="btn-secondary btn-add-npc" onClick={addNPC}>
             + Add NPC Player
           </button>
+        )}
+
+        {/* Role Configuration Panel - Host Only */}
+        {isHost && (
+          <div className="role-config-panel">
+            <div className="role-config-header">
+              <h3>🎭 Role Configuration</h3>
+              <div className="role-config-toggle">
+                <button
+                  className={`toggle-btn ${roleConfig.useDefault ? 'active' : ''}`}
+                  onClick={() => toggleRoleMode(true)}
+                >
+                  Default
+                </button>
+                <button
+                  className={`toggle-btn ${!roleConfig.useDefault ? 'active' : ''}`}
+                  onClick={() => toggleRoleMode(false)}
+                >
+                  Custom
+                </button>
+              </div>
+            </div>
+
+            {roleConfig.useDefault ? (
+              <div className="role-config-default-message">
+                Roles will be automatically assigned based on player count.
+                <br />
+                <small>(~10% each for Investigators, Lookouts, Vampires, 1 Jester, rest Citizens)</small>
+              </div>
+            ) : (
+              <>
+                <div className="role-config-grid">
+                  {roleData.map(role => (
+                    <div key={role.key} className={`role-config-card ${role.alignment}`}>
+                      <div className="role-config-card-header">
+                        <span className="role-config-icon">{role.icon}</span>
+                        <span className="role-config-name">{role.name}</span>
+                        <span className={`role-config-alignment ${role.alignment}`}>
+                          {role.alignment}
+                        </span>
+                      </div>
+                      <div className="role-config-counter">
+                        <button
+                          className="counter-btn"
+                          onClick={() => updateRoleCount(role.key, -1)}
+                          disabled={roleConfig[role.key] <= 0}
+                        >
+                          −
+                        </button>
+                        <span className="counter-value">{roleConfig[role.key] || 0}</span>
+                        <button
+                          className="counter-btn"
+                          onClick={() => updateRoleCount(role.key, 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Citizen card - shows auto-calculated count */}
+                  <div className="role-config-card good">
+                    <div className="role-config-card-header">
+                      <span className="role-config-icon">👤</span>
+                      <span className="role-config-name">Citizen</span>
+                      <span className="role-config-alignment good">good</span>
+                    </div>
+                    <div className="role-config-counter">
+                      <span className="counter-value" style={{ minWidth: 'auto', opacity: 0.7 }}>
+                        {citizenCount} (auto)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="role-config-summary">
+                  <div className="role-summary-item">
+                    Players: <span>{playerCount}</span>
+                  </div>
+                  <div className="role-summary-item">
+                    Configured: <span>{totalConfiguredRoles}</span> + <span>{citizenCount}</span> Citizens
+                  </div>
+                  {totalConfiguredRoles > playerCount && (
+                    <div className="role-summary-warning">
+                      ⚠️ More roles than players! Some roles will be randomly excluded.
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         )}
 
         {isHost ? (

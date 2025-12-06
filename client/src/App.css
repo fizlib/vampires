@@ -980,3 +980,208 @@ button:active {
     box-shadow: 0 2px 20px rgba(229, 57, 53, 0.8);
   }
 }
+
+/* Role Configuration Panel */
+.role-config-panel {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+  border: 1px solid var(--input-border);
+  width: 100%;
+}
+
+.role-config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.role-config-header h3 {
+  margin: 0;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-config-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.toggle-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  border: 2px solid var(--input-border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.toggle-btn:hover {
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+.toggle-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+  color: white;
+}
+
+.role-config-default-message {
+  text-align: center;
+  padding: 20px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.role-config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+}
+
+.role-config-card {
+  background: var(--panel-bg);
+  border-radius: 10px;
+  padding: 15px;
+  border: 2px solid var(--input-border);
+  transition: all 0.3s ease;
+}
+
+.role-config-card:hover {
+  border-color: var(--secondary);
+}
+
+.role-config-card.good {
+  border-color: rgba(156, 29, 231, 0.4);
+  background: linear-gradient(135deg, var(--panel-bg), rgba(88, 27, 152, 0.15));
+}
+
+.role-config-card.evil {
+  border-color: rgba(233, 69, 96, 0.4);
+  background: linear-gradient(135deg, var(--panel-bg), rgba(183, 28, 28, 0.15));
+}
+
+.role-config-card.neutral {
+  border-color: rgba(136, 136, 136, 0.4);
+  background: linear-gradient(135deg, var(--panel-bg), rgba(136, 136, 136, 0.1));
+}
+
+.role-config-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.role-config-icon {
+  font-size: 1.5rem;
+}
+
+.role-config-name {
+  font-weight: bold;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.role-config-alignment {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.role-config-alignment.good {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+}
+
+.role-config-alignment.evil {
+  background: linear-gradient(135deg, #b71c1c, var(--danger));
+  color: white;
+}
+
+.role-config-alignment.neutral {
+  background: var(--muted);
+  color: #1e1e24;
+}
+
+.role-config-counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.counter-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--secondary);
+  background: transparent;
+  color: var(--secondary);
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.counter-btn:hover {
+  background: var(--secondary);
+  color: white;
+}
+
+.counter-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.counter-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--text);
+  min-width: 40px;
+  text-align: center;
+}
+
+.role-config-summary {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--input-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.role-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.role-summary-item span {
+  color: var(--text);
+  font-weight: bold;
+}
+
+.role-summary-warning {
+  color: var(--danger);
+  font-size: 0.85rem;
+  font-style: italic;
+}

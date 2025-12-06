@@ -82,18 +82,57 @@ class Game {
     const total = this.players.length;
     let pool = [];
 
-    // Calculate counts
-    const investCount = Math.max(1, Math.floor(total * 0.1));
-    const lookoutCount = Math.max(1, Math.floor(total * 0.1));
-    const vampCount = Math.max(1, Math.floor(total * 0.1));
-    const jesterCount = 1;
+    // Role alignment mapping
+    const roleAlignments = {
+      'Investigator': 'good',
+      'Lookout': 'good',
+      'Citizen': 'good',
+      'Vampire': 'evil',
+      'Jester': 'neutral'
+    };
 
-    for (let i = 0; i < investCount; i++) pool.push({ role: 'Investigator', align: 'good' });
-    for (let i = 0; i < lookoutCount; i++) pool.push({ role: 'Lookout', align: 'good' });
-    for (let i = 0; i < vampCount; i++) pool.push({ role: 'Vampire', align: 'evil' });
-    for (let i = 0; i < jesterCount; i++) pool.push({ role: 'Jester', align: 'neutral' });
+    // Check if custom role configuration is provided
+    if (this.settings.roleConfig && !this.settings.roleConfig.useDefault) {
+      const config = this.settings.roleConfig;
 
-    while (pool.length < total) pool.push({ role: 'Citizen', align: 'good' });
+      // Add roles based on custom configuration
+      for (let i = 0; i < (config.Investigator || 0); i++) {
+        pool.push({ role: 'Investigator', align: roleAlignments['Investigator'] });
+      }
+      for (let i = 0; i < (config.Lookout || 0); i++) {
+        pool.push({ role: 'Lookout', align: roleAlignments['Lookout'] });
+      }
+      for (let i = 0; i < (config.Vampire || 0); i++) {
+        pool.push({ role: 'Vampire', align: roleAlignments['Vampire'] });
+      }
+      for (let i = 0; i < (config.Jester || 0); i++) {
+        pool.push({ role: 'Jester', align: roleAlignments['Jester'] });
+      }
+
+      // Fill remaining slots with Citizens
+      while (pool.length < total) {
+        pool.push({ role: 'Citizen', align: roleAlignments['Citizen'] });
+      }
+
+      // If we have more roles than players, trim the pool
+      if (pool.length > total) {
+        pool = shuffle(pool).slice(0, total);
+      }
+    } else {
+      // Default calculation based on percentages
+      const investCount = Math.max(1, Math.floor(total * 0.1));
+      const lookoutCount = Math.max(1, Math.floor(total * 0.1));
+      const vampCount = Math.max(1, Math.floor(total * 0.1));
+      const jesterCount = 1;
+
+      for (let i = 0; i < investCount; i++) pool.push({ role: 'Investigator', align: 'good' });
+      for (let i = 0; i < lookoutCount; i++) pool.push({ role: 'Lookout', align: 'good' });
+      for (let i = 0; i < vampCount; i++) pool.push({ role: 'Vampire', align: 'evil' });
+      for (let i = 0; i < jesterCount; i++) pool.push({ role: 'Jester', align: 'neutral' });
+
+      while (pool.length < total) pool.push({ role: 'Citizen', align: 'good' });
+    }
+
     pool = shuffle(pool);
 
     this.players.forEach((p, i) => {
@@ -403,10 +442,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('start_game', ({ code }) => {
+  socket.on('start_game', ({ code, roleConfig }) => {
     const game = games[code];
     const player = game?.players.find(p => p.socketId === socket.id);
     if (game && player && game.host === player.id) {
+      // Update roleConfig in settings before starting
+      if (roleConfig) {
+        game.settings.roleConfig = roleConfig;
+      }
       game.start();
       game.players.forEach(p => {
         io.to(p.socketId).emit('role_info', { role: p.role, alignment: p.alignment });
