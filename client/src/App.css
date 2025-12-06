@@ -1075,13 +1075,20 @@ button:active {
 
 .role-config-card-header {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 10px;
+}
+
+.role-config-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .role-config-icon {
   font-size: 1.5rem;
+  flex-shrink: 0;
 }
 
 .role-config-name {
@@ -1091,11 +1098,12 @@ button:active {
 }
 
 .role-config-alignment {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   padding: 2px 8px;
   border-radius: 10px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  align-self: flex-start;
 }
 
 .role-config-alignment.good {

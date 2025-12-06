@@ -434,8 +434,10 @@ function App() {
                   {roleData.map(role => (
                     <div key={role.key} className={`role-config-card ${role.alignment}`}>
                       <div className="role-config-card-header">
-                        <span className="role-config-icon">{role.icon}</span>
-                        <span className="role-config-name">{role.name}</span>
+                        <div className="role-config-card-title">
+                          <span className="role-config-icon">{role.icon}</span>
+                          <span className="role-config-name">{role.name}</span>
+                        </div>
                         <span className={`role-config-alignment ${role.alignment}`}>
                           {role.alignment}
                         </span>
@@ -462,8 +464,10 @@ function App() {
                   {/* Citizen card - shows auto-calculated count */}
                   <div className="role-config-card good">
                     <div className="role-config-card-header">
-                      <span className="role-config-icon">👤</span>
-                      <span className="role-config-name">Citizen</span>
+                      <div className="role-config-card-title">
+                        <span className="role-config-icon">👤</span>
+                        <span className="role-config-name">Citizen</span>
+                      </div>
                       <span className="role-config-alignment good">good</span>
                     </div>
                     <div className="role-config-counter">
