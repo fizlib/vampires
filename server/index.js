@@ -172,16 +172,68 @@ class Game {
     let turnedPlayer = null;
     if (canTurn) {
       const vampActions = Object.values(this.nightActions).filter(a => a.type === 'BITE');
+      const aliveVampires = this.players.filter(p => p.role === 'Vampire' && p.alive);
+
       if (vampActions.length > 0) {
-        // Last bite counts
-        const targetId = vampActions[vampActions.length - 1].targetId;
-        const target = this.players.find(p => p.id === targetId);
-        if (target && target.alive && target.role !== 'Vampire') {
-          target.role = 'Vampire';
-          target.alignment = 'evil';
-          target.isTurned = true;
-          turnedPlayer = target;
-          this.logs.push(`A dark ritual took place... someone's nature has changed.`);
+        // If 2+ vampires exist, they need to vote on the target
+        if (aliveVampires.length > 1) {
+          // Count votes for each target
+          const voteCount = {};
+          vampActions.forEach(action => {
+            voteCount[action.targetId] = (voteCount[action.targetId] || 0) + 1;
+          });
+
+          // Find the target with the most votes
+          let maxVotes = 0;
+          let topTargets = [];
+          for (const [targetId, count] of Object.entries(voteCount)) {
+            if (count > maxVotes) {
+              maxVotes = count;
+              topTargets = [targetId];
+            } else if (count === maxVotes) {
+              topTargets.push(targetId);
+            }
+          }
+
+          // Only turn if there's a clear winner (no tie) and at least 2 vampires voted for the same target
+          if (topTargets.length === 1 && maxVotes >= 2) {
+            const targetId = topTargets[0];
+            const target = this.players.find(p => p.id === targetId);
+            if (target && target.alive && target.role !== 'Vampire') {
+              target.role = 'Vampire';
+              target.alignment = 'evil';
+              target.isTurned = true;
+              turnedPlayer = target;
+              this.logs.push(`A dark ritual took place... someone's nature has changed.`);
+            }
+          } else if (topTargets.length > 1) {
+            // Tie - notify vampires they need to coordinate
+            this.logs.push(`The vampires couldn't agree on a target...`);
+            aliveVampires.forEach(vamp => {
+              if (vamp.socketId) {
+                io.to(vamp.socketId).emit('private_message', '🧛 The vampire vote was tied! You must coordinate with your fellow vampires next time.');
+              }
+            });
+          } else if (vampActions.length < 2) {
+            // Not enough vampires voted
+            this.logs.push(`The vampires couldn't agree on a target...`);
+            aliveVampires.forEach(vamp => {
+              if (vamp.socketId) {
+                io.to(vamp.socketId).emit('private_message', '🧛 Not enough vampires voted! You need at least 2 votes on the same target.');
+              }
+            });
+          }
+        } else {
+          // Only 1 vampire - original logic (last bite counts)
+          const targetId = vampActions[vampActions.length - 1].targetId;
+          const target = this.players.find(p => p.id === targetId);
+          if (target && target.alive && target.role !== 'Vampire') {
+            target.role = 'Vampire';
+            target.alignment = 'evil';
+            target.isTurned = true;
+            turnedPlayer = target;
+            this.logs.push(`A dark ritual took place... someone's nature has changed.`);
+          }
         }
       }
     }
@@ -361,6 +413,11 @@ class Game {
       logs: this.logs
     };
 
+    // Calculate vampire info for night phase
+    const aliveVampires = this.players.filter(p => p.role === 'Vampire' && p.alive);
+    const vampireCount = aliveVampires.length;
+    const canTurn = (this.round % 2 === 0);
+
     // Send personalized state to each player
     this.players.forEach(player => {
       const isVampire = player.role === 'Vampire';
@@ -373,8 +430,16 @@ class Game {
           votes: this.countVotesFor(p.id),
           isNPC: p.isNPC || false,
           // Always show vampire status to other vampires (not just during night)
-          isVampire: isVampire ? (p.role === 'Vampire') : undefined
-        }))
+          isVampire: isVampire ? (p.role === 'Vampire') : undefined,
+          // Show vampire turning votes to vampires during night
+          vampireVotes: (isVampire && this.state === 'NIGHT' && canTurn) ? this.countVampireVotesFor(p.id) : undefined
+        })),
+        // Include vampire coordination info for vampires during night
+        vampireInfo: (isVampire && this.state === 'NIGHT' && canTurn) ? {
+          totalVampires: vampireCount,
+          requiredVotes: vampireCount > 1 ? 2 : 1,
+          needsVoting: vampireCount > 1
+        } : undefined
       };
       if (player.socketId) {
         io.to(player.socketId).emit('game_update', playerState);
@@ -385,6 +450,13 @@ class Game {
   countVotesFor(pid) {
     if (this.state !== 'DAY_VOTE') return 0;
     return Object.values(this.votes).filter(v => v === pid).length;
+  }
+
+  countVampireVotesFor(pid) {
+    if (this.state !== 'NIGHT') return 0;
+    return Object.values(this.nightActions)
+      .filter(a => a.type === 'BITE' && a.targetId === pid)
+      .length;
   }
 }
 

@@ -35,7 +35,7 @@ const ROLE_INFO = {
   },
   Vampire: {
     alignment: 'Evil',
-    ability: 'Every other night, vote with other vampires to turn a citizen into a vampire.',
+    ability: 'Every other night, vote with other vampires to turn a citizen. With 2+ vampires, you need at least 2 votes on the same target!',
     goal: 'Turn or eliminate all non-vampires.'
   },
   Jester: {
@@ -258,7 +258,7 @@ function App() {
     setNightTarget({ targetId, type });
     const targetPlayer = gameState?.players.find(p => p.id === targetId);
     setPrivateMsg(prev => {
-      const actionNames = { 'INVESTIGATE': 'Investigating', 'LOOKOUT': 'Watching', 'BITE': 'Turning' };
+      const actionNames = { 'INVESTIGATE': 'Investigating', 'LOOKOUT': 'Watching', 'BITE': 'Voting for' };
       const newMsg = `> ${actionNames[type] || 'Action on'}: ${targetPlayer?.name || 'Unknown'}\n` + prev;
       localStorage.setItem('vampire_private_msg', newMsg);
       return newMsg;
@@ -566,6 +566,14 @@ function App() {
 
       {!amIAlive && <div className="banner-dead">YOU ARE DEAD</div>}
 
+      {/* Vampire voting info panel */}
+      {myRole?.role === 'Vampire' && isNight && canTurn && gameState?.vampireInfo?.needsVoting && (
+        <div className="vampire-voting-banner">
+          🧛 Vampire Vote: {gameState.vampireInfo.totalVampires} vampires must coordinate.
+          Need at least {gameState.vampireInfo.requiredVotes} votes on the same target to turn someone!
+        </div>
+      )}
+
       {gameState?.state === 'GAME_OVER' &&
         <div className="modal-overlay">
           <div className="modal-content">
@@ -608,7 +616,7 @@ function App() {
                 <div className="target-badge night-target-badge">
                   {nightTarget.type === 'INVESTIGATE' && '🔍 Investigating'}
                   {nightTarget.type === 'LOOKOUT' && '👁️ Watching'}
-                  {nightTarget.type === 'BITE' && '🧛 Turning'}
+                  {nightTarget.type === 'BITE' && '🧛 Voted'}
                 </div>
               )}
               {voteTarget === p.id && isVoting && (
@@ -646,7 +654,7 @@ function App() {
                   )}
                   {myRole?.role === 'Vampire' && canTurn && !p.isVampire && (
                     <button className={`btn-action btn-danger ${nightTarget?.targetId === p.id ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'BITE')}>
-                      {nightTarget?.targetId === p.id ? '✓ Turning' : 'Turn'}
+                      {nightTarget?.targetId === p.id ? '✓ Voted' : 'Vote to Turn'} {p.vampireVotes > 0 ? `(${p.vampireVotes})` : ''}
                     </button>
                   )}
                 </div>

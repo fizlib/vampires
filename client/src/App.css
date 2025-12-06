@@ -640,6 +640,34 @@ button:active {
   margin-bottom: 10px;
 }
 
+/* Vampire Voting Banner */
+.vampire-voting-banner {
+  background: linear-gradient(135deg, #2a0a2e, #4a1a1a);
+  color: #ff9090;
+  padding: 12px 20px;
+  text-align: center;
+  font-weight: bold;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  border: 2px solid #b71c1c;
+  box-shadow: 0 0 15px rgba(183, 28, 28, 0.4);
+  animation: vampireBannerPulse 2s ease-in-out infinite;
+}
+
+@keyframes vampireBannerPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(183, 28, 28, 0.4);
+    border-color: #b71c1c;
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(229, 57, 53, 0.6);
+    border-color: #e53935;
+  }
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;
