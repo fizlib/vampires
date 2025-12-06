@@ -14,6 +14,35 @@ const generateRandomUsername = () => {
   return `${adj}${noun}${num}`;
 };
 
+// Role descriptions
+const ROLE_INFO = {
+  Investigator: {
+    alignment: 'Good',
+    ability: 'Each night, investigate one player to learn if they are suspicious.',
+    goal: 'Eliminate all vampires and survive.'
+  },
+  Lookout: {
+    alignment: 'Good',
+    ability: 'Each night, watch one player to see who visits them.',
+    goal: 'Eliminate all vampires and survive.'
+  },
+  Citizen: {
+    alignment: 'Good',
+    ability: 'No special ability. Use your vote wisely during the day.',
+    goal: 'Eliminate all vampires and survive.'
+  },
+  Vampire: {
+    alignment: 'Evil',
+    ability: 'Every other night, vote with other vampires to turn a citizen into a vampire.',
+    goal: 'Turn or eliminate all non-vampires.'
+  },
+  Jester: {
+    alignment: 'Neutral',
+    ability: 'No special night ability. Try to act suspicious!',
+    goal: 'Get yourself voted out during the day to win.'
+  }
+};
+
 function App() {
   // Initialize state from localStorage where applicable
   const [view, setView] = useState(() => {
@@ -37,6 +66,7 @@ function App() {
   const [selectedPlayerRole, setSelectedPlayerRole] = useState(null); // For host role viewing modal
   const [nightTarget, setNightTarget] = useState(null); // Track who we targeted at night
   const [voteTarget, setVoteTarget] = useState(null); // Track who we voted for
+  const [roleRevealed, setRoleRevealed] = useState(false); // Track if role is revealed
 
   // Settings - also persist these
   const [settings, setSettings] = useState(() => {
@@ -356,8 +386,9 @@ function App() {
           <span className="phase-label">{gameState?.state.replace('_', ' ')}</span>
           <span className="timer-badge">{timer}s</span>
         </div>
-        <div className={`role-badge ${myRole?.alignment}`}>
-          Role: {myRole?.role}
+        <div className="role-display" onClick={() => setRoleRevealed(true)} title="Click to see your role">
+          <span className="role-label">Role</span>
+          <span className="role-value">Click to see</span>
         </div>
         {isHost && isGameActive && (
           <div className="host-controls">
@@ -366,6 +397,33 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* My Role Info Panel */}
+      {roleRevealed && (
+        <div className="modal-overlay" onClick={() => setRoleRevealed(false)}>
+          <div className="modal-content role-info-panel" onClick={e => e.stopPropagation()}>
+            <h2>Your Role</h2>
+            <div className={`role-name ${myRole?.alignment}`}>{myRole?.role || '???'}</div>
+            <div className="role-details">
+              <div className="role-detail-row">
+                <span className="detail-label">Alignment</span>
+                <span className={`detail-value alignment-${myRole?.alignment}`}>
+                  {ROLE_INFO[myRole?.role]?.alignment || myRole?.alignment || 'Unknown'}
+                </span>
+              </div>
+              <div className="role-detail-row">
+                <span className="detail-label">Ability</span>
+                <span className="detail-value">{ROLE_INFO[myRole?.role]?.ability || 'Unknown ability'}</span>
+              </div>
+              <div className="role-detail-row">
+                <span className="detail-label">Goal</span>
+                <span className="detail-value">{ROLE_INFO[myRole?.role]?.goal || 'Unknown goal'}</span>
+              </div>
+            </div>
+            <button className="btn-secondary" onClick={() => setRoleRevealed(false)}>Close</button>
+          </div>
+        </div>
+      )}
 
       {!amIAlive && <div className="banner-dead">YOU ARE DEAD</div>}
 
@@ -386,7 +444,7 @@ function App() {
             <h2>{selectedPlayerRole.name}</h2>
             {selectedPlayerRole.isNPC && <span className="npc-badge">🤖 NPC</span>}
             <div className="role-info-display">
-              <div className={`role-badge large ${selectedPlayerRole.alignment}`}>
+              <div className={`role-value large ${selectedPlayerRole.alignment}`}>
                 {selectedPlayerRole.role || 'No role assigned'}
               </div>
               <p className="alignment-text">
