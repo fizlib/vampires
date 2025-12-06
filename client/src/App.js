@@ -559,7 +559,7 @@ function App() {
         </div>
         <div className="role-display" onClick={() => setRoleRevealed(true)} title="Click to see your role">
           <span className="role-label">Role</span>
-          <span className="role-value">Click to see</span>
+          <span className="role-value">Show</span>
         </div>
         {isHost && isGameActive && (
           <div className="host-controls">
