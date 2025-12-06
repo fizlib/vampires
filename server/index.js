@@ -18,9 +18,9 @@ const games = {};
 const shuffle = (array) => array.sort(() => Math.random() - 0.5);
 
 class Game {
-  constructor(code, hostId, settings) {
+  constructor(code, hostPlayerId, settings) {
     this.code = code;
-    this.host = hostId; // This is the socket ID of the host
+    this.host = hostPlayerId; // This is the player ID of the host (persistent)
     this.players = [];
     this.state = 'LOBBY';
     this.round = 0;
@@ -292,7 +292,7 @@ io.on('connection', (socket) => {
     const code = Math.random().toString(36).substring(2, 7).toUpperCase();
     const playerId = Math.random().toString(36).substr(2, 9); // Generate stable ID
 
-    const game = new Game(code, socket.id, settings);
+    const game = new Game(code, playerId, settings); // Use playerId as host (persistent)
     game.addPlayer(playerId, name, socket.id);
     games[code] = game;
 
@@ -318,7 +318,8 @@ io.on('connection', (socket) => {
   // --- KICK (Host Only) ---
   socket.on('kick_player', ({ code, targetId }) => {
     const game = games[code];
-    if (game && game.host === socket.id) {
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id) {
       // Find target socket to notify them
       const target = game.players.find(p => p.id === targetId);
       if (target) {
@@ -332,7 +333,8 @@ io.on('connection', (socket) => {
 
   socket.on('start_game', ({ code }) => {
     const game = games[code];
-    if (game && game.host === socket.id) {
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id) {
       game.start();
       game.players.forEach(p => {
         io.to(p.socketId).emit('role_info', { role: p.role, alignment: p.alignment });
