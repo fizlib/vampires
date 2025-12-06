@@ -35,6 +35,8 @@ function App() {
   const [privateMsg, setPrivateMsg] = useState(() => localStorage.getItem('vampire_private_msg') || '');
   const [timer, setTimer] = useState(0);
   const [selectedPlayerRole, setSelectedPlayerRole] = useState(null); // For host role viewing modal
+  const [nightTarget, setNightTarget] = useState(null); // Track who we targeted at night
+  const [voteTarget, setVoteTarget] = useState(null); // Track who we voted for
 
   // Settings - also persist these
   const [settings, setSettings] = useState(() => {
@@ -70,6 +72,14 @@ function App() {
     });
 
     socket.on('game_update', (data) => {
+      // Reset targets when phase changes
+      if (gameState?.state !== data.state) {
+        if (data.state === 'NIGHT') {
+          setNightTarget(null);
+        } else if (data.state === 'DAY_VOTE') {
+          setVoteTarget(null);
+        }
+      }
       setGameState(data);
       setTimer(data.timer);
       // Update view based on game state
@@ -174,13 +184,19 @@ function App() {
   const startGame = () => socket.emit('start_game', { code });
   const sendAction = (targetId, type) => {
     socket.emit('night_action', { code, action: { targetId, type } });
+    setNightTarget({ targetId, type });
+    const targetPlayer = gameState?.players.find(p => p.id === targetId);
     setPrivateMsg(prev => {
-      const newMsg = `> Action submitted.\n` + prev;
+      const actionNames = { 'INVESTIGATE': 'Investigating', 'LOOKOUT': 'Watching', 'BITE': 'Turning' };
+      const newMsg = `> ${actionNames[type] || 'Action on'}: ${targetPlayer?.name || 'Unknown'}\n` + prev;
       localStorage.setItem('vampire_private_msg', newMsg);
       return newMsg;
     });
   };
-  const vote = (targetId) => socket.emit('day_vote', { code, targetId });
+  const vote = (targetId) => {
+    socket.emit('day_vote', { code, targetId });
+    setVoteTarget(targetId);
+  };
   const skipTimer = () => socket.emit('skip_timer', { code });
   const endGame = () => {
     if (window.confirm("Are you sure you want to end the game?")) {
@@ -362,7 +378,23 @@ function App() {
       <div className="game-board">
         <div className="players-section">
           {gameState?.players.map(p => (
-            <div key={p.id} className={`game-player-card ${!p.alive ? 'dead' : ''} ${p.id === myId ? 'me' : ''} ${p.isNPC ? 'npc-card' : ''}`}>
+            <div key={p.id} className={`game-player-card ${!p.alive ? 'dead' : ''} ${p.id === myId ? 'me' : ''} ${p.isNPC ? 'npc-card' : ''} ${nightTarget?.targetId === p.id && isNight ? 'target-night' : ''} ${voteTarget === p.id && isVoting ? 'target-vote' : ''} ${p.isVampire && isNight && myRole?.role === 'Vampire' ? 'vampire-teammate' : ''}`}>
+              {/* Vampire teammate indicator */}
+              {p.isVampire && isNight && myRole?.role === 'Vampire' && p.id !== myId && (
+                <div className="vampire-badge">🧛 Vampire</div>
+              )}
+              {/* Target indicator badges */}
+              {nightTarget?.targetId === p.id && isNight && (
+                <div className="target-badge night-target-badge">
+                  {nightTarget.type === 'INVESTIGATE' && '🔍 Investigating'}
+                  {nightTarget.type === 'LOOKOUT' && '👁️ Watching'}
+                  {nightTarget.type === 'BITE' && '🧛 Turning'}
+                </div>
+              )}
+              {voteTarget === p.id && isVoting && (
+                <div className="target-badge vote-target-badge">🗳️ Your Vote</div>
+              )}
+
               <div className="card-top">
                 <span
                   className={`name ${isHost ? 'clickable-name' : ''}`}
@@ -372,8 +404,8 @@ function App() {
                   {p.isNPC && '🤖 '}{p.name}
                 </span>
                 {p.alive && isVoting && amIAlive && p.id !== myId && (
-                  <button className="btn-vote" onClick={() => vote(p.id)}>
-                    Vote ({p.votes})
+                  <button className={`btn-vote ${voteTarget === p.id ? 'voted' : ''}`} onClick={() => vote(p.id)}>
+                    {voteTarget === p.id ? '✓ Voted' : 'Vote'} ({p.votes})
                   </button>
                 )}
                 {/* Show vote count even if I can't vote */}
@@ -383,13 +415,19 @@ function App() {
               {p.alive && isNight && amIAlive && p.id !== myId && (
                 <div className="action-buttons">
                   {myRole?.role === 'Investigator' && (
-                    <button className="btn-action" onClick={() => sendAction(p.id, 'INVESTIGATE')}>Investigate</button>
+                    <button className={`btn-action ${nightTarget?.targetId === p.id ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'INVESTIGATE')}>
+                      {nightTarget?.targetId === p.id ? '✓ Investigating' : 'Investigate'}
+                    </button>
                   )}
                   {myRole?.role === 'Lookout' && (
-                    <button className="btn-action" onClick={() => sendAction(p.id, 'LOOKOUT')}>Watch</button>
+                    <button className={`btn-action ${nightTarget?.targetId === p.id ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'LOOKOUT')}>
+                      {nightTarget?.targetId === p.id ? '✓ Watching' : 'Watch'}
+                    </button>
                   )}
-                  {myRole?.role === 'Vampire' && canTurn && (
-                    <button className="btn-action btn-danger" onClick={() => sendAction(p.id, 'BITE')}>Turn</button>
+                  {myRole?.role === 'Vampire' && canTurn && !p.isVampire && (
+                    <button className={`btn-action btn-danger ${nightTarget?.targetId === p.id ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'BITE')}>
+                      {nightTarget?.targetId === p.id ? '✓ Turning' : 'Turn'}
+                    </button>
                   )}
                 </div>
               )}

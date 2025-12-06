@@ -513,3 +513,161 @@ button:active {
   color: var(--text);
   text-transform: capitalize;
 }
+
+/* Night & Vote Target Indicators */
+.game-player-card.target-night {
+  border: 2px solid var(--secondary);
+  box-shadow: 0 0 15px rgba(156, 29, 231, 0.5), inset 0 0 20px rgba(156, 29, 231, 0.1);
+  background: linear-gradient(135deg, var(--card-bg), #2a1540);
+  animation: pulseNight 2s ease-in-out infinite;
+}
+
+.game-player-card.target-vote {
+  border: 2px solid var(--danger);
+  box-shadow: 0 0 15px rgba(233, 69, 96, 0.5), inset 0 0 20px rgba(233, 69, 96, 0.1);
+  background: linear-gradient(135deg, var(--card-bg), #3a1520);
+  animation: pulseVote 2s ease-in-out infinite;
+}
+
+@keyframes pulseNight {
+
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(156, 29, 231, 0.5), inset 0 0 20px rgba(156, 29, 231, 0.1);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(156, 29, 231, 0.7), inset 0 0 30px rgba(156, 29, 231, 0.2);
+  }
+}
+
+@keyframes pulseVote {
+
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(233, 69, 96, 0.5), inset 0 0 20px rgba(233, 69, 96, 0.1);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(233, 69, 96, 0.7), inset 0 0 30px rgba(233, 69, 96, 0.2);
+  }
+}
+
+/* Target Badges */
+.target-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  white-space: nowrap;
+  z-index: 10;
+  animation: badgeBounce 0.3s ease-out;
+}
+
+@keyframes badgeBounce {
+  0% {
+    transform: translateX(-50%) scale(0.5);
+    opacity: 0;
+  }
+
+  50% {
+    transform: translateX(-50%) scale(1.1);
+  }
+
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.night-target-badge {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  box-shadow: 0 2px 10px rgba(156, 29, 231, 0.5);
+}
+
+.vote-target-badge {
+  background: linear-gradient(135deg, #c62828, var(--danger));
+  color: white;
+  box-shadow: 0 2px 10px rgba(233, 69, 96, 0.5);
+}
+
+/* Selected Action Button */
+.btn-action.action-selected {
+  background: linear-gradient(135deg, #00695c, #00897b);
+  position: relative;
+}
+
+.btn-action.action-selected::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00897b, #26a69a);
+  z-index: -1;
+  animation: selectedGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes selectedGlow {
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Voted Button */
+.btn-vote.voted {
+  background: linear-gradient(135deg, #388e3c, #4caf50);
+  color: white;
+}
+
+.btn-vote.voted:hover {
+  background: linear-gradient(135deg, #2e7d32, #388e3c);
+}
+
+/* Vampire Teammate Visibility (Night Phase) */
+.game-player-card.vampire-teammate {
+  border: 2px solid #b71c1c;
+  box-shadow: 0 0 20px rgba(183, 28, 28, 0.6), inset 0 0 15px rgba(183, 28, 28, 0.15);
+  background: linear-gradient(135deg, var(--card-bg), #2a1515);
+}
+
+.vampire-badge {
+  position: absolute;
+  top: -12px;
+  right: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  white-space: nowrap;
+  z-index: 10;
+  background: linear-gradient(135deg, #b71c1c, #e53935);
+  color: white;
+  box-shadow: 0 2px 10px rgba(183, 28, 28, 0.5);
+  animation: vampirePulse 2s ease-in-out infinite;
+}
+
+@keyframes vampirePulse {
+
+  0%,
+  100% {
+    box-shadow: 0 2px 10px rgba(183, 28, 28, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 2px 20px rgba(229, 57, 53, 0.8);
+  }
+}

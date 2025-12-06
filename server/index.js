@@ -284,22 +284,40 @@ class Game {
   }
 
   broadcastUpdate() {
-    const publicState = {
+    // Build base public state
+    const baseState = {
       code: this.code,
       host: this.host,
       state: this.state,
       round: this.round,
       timer: this.timer,
-      logs: this.logs,
-      players: this.players.map(p => ({
-        id: p.id,
-        name: p.name,
-        alive: p.alive,
-        votes: this.countVotesFor(p.id),
-        isNPC: p.isNPC || false
-      }))
+      logs: this.logs
     };
-    io.to(this.code).emit('game_update', publicState);
+
+    // Get vampire player IDs for night phase visibility
+    const vampireIds = this.state === 'NIGHT'
+      ? this.players.filter(p => p.role === 'Vampire' && p.alive).map(p => p.id)
+      : [];
+
+    // Send personalized state to each player
+    this.players.forEach(player => {
+      const isVampire = player.role === 'Vampire';
+      const playerState = {
+        ...baseState,
+        players: this.players.map(p => ({
+          id: p.id,
+          name: p.name,
+          alive: p.alive,
+          votes: this.countVotesFor(p.id),
+          isNPC: p.isNPC || false,
+          // Show vampire status to other vampires during night
+          isVampire: (isVampire && this.state === 'NIGHT') ? (p.role === 'Vampire') : undefined
+        }))
+      };
+      if (player.socketId) {
+        io.to(player.socketId).emit('game_update', playerState);
+      }
+    });
   }
 
   countVotesFor(pid) {
@@ -396,6 +414,14 @@ io.on('connection', (socket) => {
     // We need to find the player ID associated with this socket
     const player = game?.players.find(p => p.socketId === socket.id);
     if (game && game.state === 'NIGHT' && player) {
+      // Validate BITE action - vampires can't target other vampires
+      if (action.type === 'BITE') {
+        const target = game.players.find(p => p.id === action.targetId);
+        if (target && target.role === 'Vampire') {
+          socket.emit('private_message', 'Cannot turn a fellow vampire!');
+          return;
+        }
+      }
       game.nightActions[player.id] = { ...action, actorId: player.id };
     }
   });
