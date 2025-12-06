@@ -40,7 +40,7 @@ const ROLE_INFO = {
   },
   Vampire: {
     alignment: 'Evil',
-    ability: 'Every other night, vote with other vampires to turn a citizen. With 2+ vampires, you need at least 2 votes on the same target!',
+    ability: 'Every other night, vote to turn a citizen. The target with the most votes is turned (ties are random)!',
     goal: 'Turn or eliminate all non-vampires.'
   },
   Jester: {
@@ -608,8 +608,8 @@ function App() {
       {/* Vampire voting info panel */}
       {myRole?.role === 'Vampire' && isNight && canTurn && gameState?.vampireInfo?.needsVoting && (
         <div className="vampire-voting-banner">
-          🧛 Vampire Vote: {gameState.vampireInfo.totalVampires} vampires must coordinate.
-          Need at least {gameState.vampireInfo.requiredVotes} votes on the same target to turn someone!
+          🧛 Vampire Vote: {gameState.vampireInfo.totalVampires} vampires active.
+          Target with the most votes will be turned!
         </div>
       )}
 

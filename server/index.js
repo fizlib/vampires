@@ -202,51 +202,34 @@ class Game {
       const aliveVampires = this.players.filter(p => p.role === 'Vampire' && p.alive);
 
       if (vampActions.length > 0) {
-        // If 2+ vampires exist, they need to vote on the target
+        // Count votes for each target
+        const voteCount = {};
+        vampActions.forEach(action => {
+          voteCount[action.targetId] = (voteCount[action.targetId] || 0) + 1;
+        });
+
+        // Find the maximum number of votes
+        let maxVotes = 0;
+        for (const count of Object.values(voteCount)) {
+          if (count > maxVotes) maxVotes = count;
+        }
+
+        // Find all targets with the maximum votes
+        const topTargets = Object.keys(voteCount).filter(targetId => voteCount[targetId] === maxVotes);
+
+        // Pick one target (randomly if tied)
         let potentialTargetId = null;
+        if (topTargets.length > 0) {
+          potentialTargetId = topTargets[Math.floor(Math.random() * topTargets.length)];
 
-        if (aliveVampires.length > 1) {
-          // Count votes for each target
-          const voteCount = {};
-          vampActions.forEach(action => {
-            voteCount[action.targetId] = (voteCount[action.targetId] || 0) + 1;
-          });
-
-          // Find the target with the most votes
-          let maxVotes = 0;
-          let topTargets = [];
-          for (const [targetId, count] of Object.entries(voteCount)) {
-            if (count > maxVotes) {
-              maxVotes = count;
-              topTargets = [targetId];
-            } else if (count === maxVotes) {
-              topTargets.push(targetId);
-            }
-          }
-
-          // Only turn if there's a clear winner (no tie) and at least 2 vampires voted for the same target
-          if (topTargets.length === 1 && maxVotes >= 2) {
-            potentialTargetId = topTargets[0];
-          } else if (topTargets.length > 1) {
-            // Tie - notify vampires they need to coordinate
-            this.logs.push(`The vampires couldn't agree on a target...`);
+          // If there was a tie, notify vampires
+          if (topTargets.length > 1) {
             aliveVampires.forEach(vamp => {
               if (vamp.socketId) {
-                io.to(vamp.socketId).emit('private_message', '🧛 The vampire vote was tied! You must coordinate with your fellow vampires next time.');
-              }
-            });
-          } else if (vampActions.length < 2) {
-            // Not enough vampires voted
-            this.logs.push(`The vampires couldn't agree on a target...`);
-            aliveVampires.forEach(vamp => {
-              if (vamp.socketId) {
-                io.to(vamp.socketId).emit('private_message', '🧛 Not enough vampires voted! You need at least 2 votes on the same target.');
+                io.to(vamp.socketId).emit('private_message', '🧛 The vampire vote was tied! A target was picked randomly among the top votes.');
               }
             });
           }
-        } else {
-          // Only 1 vampire - original logic (last bite counts)
-          potentialTargetId = vampActions[vampActions.length - 1].targetId;
         }
 
         if (potentialTargetId) {
@@ -481,7 +464,7 @@ class Game {
         // Include vampire coordination info for vampires during night
         vampireInfo: (isVampire && this.state === 'NIGHT' && canTurn) ? {
           totalVampires: vampireCount,
-          requiredVotes: vampireCount > 1 ? 2 : 1,
+          requiredVotes: 1,
           needsVoting: vampireCount > 1
         } : undefined
       };
