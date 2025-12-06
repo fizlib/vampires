@@ -58,6 +58,22 @@ function App() {
     }
   }, []);
 
+  // 1.5 Theme switching based on game phase (Day = light theme, Night = dark theme)
+  useEffect(() => {
+    const isDayPhase = gameState?.state === 'DAY_DISCUSS' || gameState?.state === 'DAY_VOTE';
+
+    if (isDayPhase) {
+      document.documentElement.setAttribute('data-theme', 'day');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.documentElement.removeAttribute('data-theme');
+    };
+  }, [gameState?.state]);
+
   // 2. Socket Listeners
   useEffect(() => {
     socket.on('game_created', ({ code, playerId }) => {

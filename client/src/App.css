@@ -1,3 +1,4 @@
+/* Dark Theme (Night) - Default */
 :root {
   --bg-color: #121212;
   --card-bg: #1e1e24;
@@ -9,6 +10,170 @@
   --danger: #e94560;
   --text: #e0e0e0;
   --muted: #888;
+  --input-bg: #2a2a35;
+  --input-border: #444;
+  --header-bg: #000;
+  --panel-bg: #18181b;
+  --overlay-bg: rgba(0, 0, 0, 0.8);
+}
+
+/* Light Theme (Day) */
+[data-theme="day"] {
+  --bg-color: #f5f0e1;
+  --card-bg: #ffffff;
+  --primary: #d4a574;
+  --secondary: #e8b84a;
+  --accent: #c17f59;
+  --danger: #c0392b;
+  --text: #2c3e50;
+  --muted: #7f8c8d;
+  --input-bg: #f9f6f0;
+  --input-border: #d4c4a8;
+  --header-bg: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+  --panel-bg: #faf8f3;
+  --overlay-bg: rgba(255, 255, 255, 0.9);
+}
+
+/* Day theme transition effects */
+[data-theme="day"] body {
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* Day theme specific overrides */
+[data-theme="day"] .game-header {
+  background: var(--header-bg);
+  border: 1px solid var(--input-border);
+  box-shadow: 0 4px 15px rgba(253, 160, 133, 0.3);
+}
+
+[data-theme="day"] .phase-label {
+  color: #c0392b;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="day"] .timer-badge {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+[data-theme="day"] .card {
+  box-shadow: 0 4px 20px rgba(212, 165, 116, 0.25);
+  border: 1px solid #e8dcc8;
+}
+
+[data-theme="day"] .player-chip {
+  background: var(--card-bg);
+  border: 1px solid var(--input-border);
+}
+
+[data-theme="day"] .game-player-card {
+  background: var(--card-bg);
+  border: 1px solid var(--input-border);
+  box-shadow: 0 2px 10px rgba(212, 165, 116, 0.2);
+}
+
+[data-theme="day"] .input-modern {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text);
+}
+
+[data-theme="day"] .panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--input-border);
+}
+
+[data-theme="day"] .scroll-box {
+  color: var(--text);
+}
+
+[data-theme="day"] .log-entry {
+  border-bottom: 1px solid var(--input-border);
+}
+
+[data-theme="day"] .btn-secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+[data-theme="day"] .btn-small {
+  background: #e8dcc8;
+  color: #5d4e37;
+}
+
+[data-theme="day"] .modal-overlay {
+  background: var(--overlay-bg);
+}
+
+[data-theme="day"] .modal-content {
+  border: 2px solid var(--secondary);
+  box-shadow: 0 8px 30px rgba(232, 184, 74, 0.3);
+}
+
+[data-theme="day"] .title-blood {
+  color: var(--danger);
+  text-shadow: 0 2px 8px rgba(192, 57, 43, 0.3);
+}
+
+[data-theme="day"] .highlight-code {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+[data-theme="day"] .avatar {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+}
+
+[data-theme="day"] .waiting-text {
+  color: var(--muted);
+}
+
+/* Sun icon animation for day phase */
+[data-theme="day"]::before {
+  content: '☀️';
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  font-size: 2rem;
+  animation: sunPulse 3s ease-in-out infinite;
+  z-index: 1000;
+}
+
+@keyframes sunPulse {
+
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 10px rgba(253, 160, 133, 0.6));
+  }
+
+  50% {
+    transform: scale(1.1) rotate(15deg);
+    filter: drop-shadow(0 0 20px rgba(253, 160, 133, 0.9));
+  }
+}
+
+/* Moon icon for night phase */
+:root::before {
+  content: '🌙';
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  font-size: 2rem;
+  animation: moonGlow 4s ease-in-out infinite;
+  z-index: 1000;
+}
+
+@keyframes moonGlow {
+
+  0%,
+  100% {
+    filter: drop-shadow(0 0 10px rgba(156, 29, 231, 0.6));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 20px rgba(156, 29, 231, 0.9));
+  }
 }
 
 body {
@@ -16,6 +181,7 @@ body {
   background-color: var(--bg-color);
   color: var(--text);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 /* Layout */
@@ -73,14 +239,15 @@ h4 {
 }
 
 .input-modern {
-  background: #2a2a35;
-  border: 1px solid #444;
-  color: white;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text);
   padding: 12px;
   border-radius: 6px;
   font-size: 1rem;
   width: 100%;
   box-sizing: border-box;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 .input-modern:focus {
@@ -96,9 +263,11 @@ h4 {
 .setting-row input {
   width: 60px;
   padding: 5px;
-  background: #2a2a35;
-  border: none;
-  color: white;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text);
+  border-radius: 4px;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 /* Buttons */
@@ -177,9 +346,10 @@ button:active {
   color: var(--accent);
   font-family: monospace;
   font-size: 2rem;
-  background: #222;
+  background: var(--input-bg);
   padding: 0 10px;
   border-radius: 4px;
+  transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 .player-grid {
@@ -195,7 +365,8 @@ button:active {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #333;
+  border: 1px solid var(--input-border);
+  transition: background-color 0.5s ease, border-color 0.5s ease;
 }
 
 .avatar {
@@ -221,11 +392,12 @@ button:active {
 .game-header {
   display: flex;
   justify-content: space-between;
-  background: #000;
+  background: var(--header-bg);
   padding: 15px;
   border-radius: 8px;
   margin-bottom: 20px;
-  border: 1px solid #333;
+  border: 1px solid var(--input-border);
+  transition: background 0.5s ease, border-color 0.5s ease;
 }
 
 .phase-indicator {
@@ -305,8 +477,9 @@ button:active {
   background: var(--card-bg);
   padding: 15px;
   border-radius: 8px;
-  border: 1px solid #333;
+  border: 1px solid var(--input-border);
   position: relative;
+  transition: background-color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
 }
 
 .game-player-card.me {
@@ -337,12 +510,13 @@ button:active {
 }
 
 .panel {
-  background: #18181b;
+  background: var(--panel-bg);
   padding: 10px;
   border-radius: 8px;
   height: 300px;
   display: flex;
   flex-direction: column;
+  transition: background-color 0.5s ease;
 }
 
 .scroll-box {
@@ -350,7 +524,8 @@ button:active {
   overflow-y: auto;
   font-size: 0.9rem;
   padding: 5px;
-  color: #ccc;
+  color: var(--text);
+  transition: color 0.5s ease;
 }
 
 .private-text {
@@ -360,8 +535,9 @@ button:active {
 
 .log-entry {
   margin-bottom: 5px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--input-border);
   padding-bottom: 2px;
+  transition: border-color 0.5s ease;
 }
 
 .banner-dead {
@@ -381,11 +557,12 @@ button:active {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
+  transition: background-color 0.5s ease;
 }
 
 .modal-content {

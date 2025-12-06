@@ -238,9 +238,15 @@ class Game {
     if (vamps.length === 0) {
       this.state = 'GAME_OVER';
       this.winner = 'GOOD';
+      if (this.interval) clearInterval(this.interval);
+      this.logs.push('The vampires have been eliminated! Good wins!');
+      this.broadcastUpdate();
     } else if (vamps.length >= living.length / 2) {
       this.state = 'GAME_OVER';
       this.winner = 'EVIL';
+      if (this.interval) clearInterval(this.interval);
+      this.logs.push('The vampires have taken over! Evil wins!');
+      this.broadcastUpdate();
     }
   }
 
