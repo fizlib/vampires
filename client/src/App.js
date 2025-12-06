@@ -598,9 +598,9 @@ function App() {
       <div className="game-board">
         <div className="players-section">
           {gameState?.players.map(p => (
-            <div key={p.id} className={`game-player-card ${!p.alive ? 'dead' : ''} ${p.id === myId ? 'me' : ''} ${p.isNPC ? 'npc-card' : ''} ${nightTarget?.targetId === p.id && isNight ? 'target-night' : ''} ${voteTarget === p.id && isVoting ? 'target-vote' : ''} ${p.isVampire && isNight && myRole?.role === 'Vampire' ? 'vampire-teammate' : ''}`}>
-              {/* Vampire teammate indicator */}
-              {p.isVampire && isNight && myRole?.role === 'Vampire' && p.id !== myId && (
+            <div key={p.id} className={`game-player-card ${!p.alive ? 'dead' : ''} ${p.id === myId ? 'me' : ''} ${p.isNPC ? 'npc-card' : ''} ${nightTarget?.targetId === p.id && isNight ? 'target-night' : ''} ${voteTarget === p.id && isVoting ? 'target-vote' : ''} ${p.isVampire && myRole?.role === 'Vampire' ? 'vampire-teammate' : ''}`}>
+              {/* Vampire teammate indicator - always visible to vampires */}
+              {p.isVampire && myRole?.role === 'Vampire' && p.id !== myId && (
                 <div className="vampire-badge">🧛 Vampire</div>
               )}
               {/* Target indicator badges */}

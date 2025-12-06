@@ -148,53 +148,7 @@
   background-clip: text;
 }
 
-/* Sun icon animation for day phase */
-[data-theme="day"]::before {
-  content: '☀️';
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  font-size: 2rem;
-  animation: sunPulse 3s ease-in-out infinite;
-  z-index: 1000;
-}
 
-@keyframes sunPulse {
-
-  0%,
-  100% {
-    transform: scale(1) rotate(0deg);
-    filter: drop-shadow(0 0 10px rgba(253, 160, 133, 0.6));
-  }
-
-  50% {
-    transform: scale(1.1) rotate(15deg);
-    filter: drop-shadow(0 0 20px rgba(253, 160, 133, 0.9));
-  }
-}
-
-/* Moon icon for night phase - only when data-phase="night" is set */
-[data-phase="night"]::before {
-  content: '🌙';
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  font-size: 2rem;
-  animation: moonGlow 4s ease-in-out infinite;
-  z-index: 1000;
-}
-
-@keyframes moonGlow {
-
-  0%,
-  100% {
-    filter: drop-shadow(0 0 10px rgba(156, 29, 231, 0.6));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 20px rgba(156, 29, 231, 0.9));
-  }
-}
 
 body {
   margin: 0;

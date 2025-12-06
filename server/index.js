@@ -169,16 +169,18 @@ class Game {
 
     // 2. Vampire Logic (Every other night, starting night 2)
     const canTurn = (this.round % 2 === 0);
+    let turnedPlayer = null;
     if (canTurn) {
       const vampActions = Object.values(this.nightActions).filter(a => a.type === 'BITE');
       if (vampActions.length > 0) {
         // Last bite counts
         const targetId = vampActions[vampActions.length - 1].targetId;
         const target = this.players.find(p => p.id === targetId);
-        if (target && target.alive) {
+        if (target && target.alive && target.role !== 'Vampire') {
           target.role = 'Vampire';
           target.alignment = 'evil';
           target.isTurned = true;
+          turnedPlayer = target;
           this.logs.push(`A dark ritual took place... someone's nature has changed.`);
         }
       }
@@ -211,6 +213,26 @@ class Game {
       const player = this.players.find(p => p.id === pId);
       if (player) io.to(player.socketId).emit('private_message', investigationResults[pId]);
     });
+
+    // Notify turned player and send updated role info
+    if (turnedPlayer && turnedPlayer.socketId) {
+      // Send private notification about being turned
+      io.to(turnedPlayer.socketId).emit('private_message', '🧛 You have been turned into a Vampire! You are now part of the vampire faction.');
+
+      // Send updated role info immediately
+      io.to(turnedPlayer.socketId).emit('role_info', {
+        role: turnedPlayer.role,
+        alignment: turnedPlayer.alignment
+      });
+
+      // Get list of other vampires for the newly turned player
+      const otherVampires = this.players
+        .filter(p => p.role === 'Vampire' && p.alive && p.id !== turnedPlayer.id)
+        .map(p => p.name);
+      if (otherVampires.length > 0) {
+        io.to(turnedPlayer.socketId).emit('private_message', `🧛 Your fellow vampires are: ${otherVampires.join(', ')}`);
+      }
+    }
 
     this.checkWinCondition();
     if (this.state !== 'GAME_OVER') this.startDayDiscuss();
@@ -339,11 +361,6 @@ class Game {
       logs: this.logs
     };
 
-    // Get vampire player IDs for night phase visibility
-    const vampireIds = this.state === 'NIGHT'
-      ? this.players.filter(p => p.role === 'Vampire' && p.alive).map(p => p.id)
-      : [];
-
     // Send personalized state to each player
     this.players.forEach(player => {
       const isVampire = player.role === 'Vampire';
@@ -355,8 +372,8 @@ class Game {
           alive: p.alive,
           votes: this.countVotesFor(p.id),
           isNPC: p.isNPC || false,
-          // Show vampire status to other vampires during night
-          isVampire: (isVampire && this.state === 'NIGHT') ? (p.role === 'Vampire') : undefined
+          // Always show vampire status to other vampires (not just during night)
+          isVampire: isVampire ? (p.role === 'Vampire') : undefined
         }))
       };
       if (player.socketId) {
