@@ -17,6 +17,16 @@ const games = {};
 // Helper: Shuffle
 const shuffle = (array) => array.sort(() => Math.random() - 0.5);
 
+// Random NPC name generator
+const generateNPCName = () => {
+  const adjectives = ['Shadow', 'Dark', 'Blood', 'Night', 'Crimson', 'Silent', 'Mystic', 'Ancient', 'Pale', 'Eternal', 'Grim', 'Hollow', 'Frost', 'Ember', 'Storm'];
+  const nouns = ['Hunter', 'Walker', 'Stalker', 'Slayer', 'Seeker', 'Watcher', 'Phantom', 'Specter', 'Raven', 'Wolf', 'Crow', 'Shade', 'Wraith', 'Spirit', 'Ghost'];
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const num = Math.floor(Math.random() * 100);
+  return `${adj}${noun}${num}`;
+};
+
 class Game {
   constructor(code, hostPlayerId, settings) {
     this.code = code;
@@ -44,10 +54,24 @@ class Game {
     const newPlayer = {
       id, name, socketId,
       role: null, alignment: null,
-      alive: true, isTurned: false, connected: true
+      alive: true, isTurned: false, connected: true,
+      isNPC: false
     };
     this.players.push(newPlayer);
     return newPlayer;
+  }
+
+  addNPC() {
+    const id = 'npc_' + Math.random().toString(36).substr(2, 9);
+    const name = '[NPC] ' + generateNPCName();
+    const npcPlayer = {
+      id, name, socketId: null,
+      role: null, alignment: null,
+      alive: true, isTurned: false, connected: true,
+      isNPC: true
+    };
+    this.players.push(npcPlayer);
+    return npcPlayer;
   }
 
   removePlayer(playerId) {
@@ -271,7 +295,8 @@ class Game {
         id: p.id,
         name: p.name,
         alive: p.alive,
-        votes: this.countVotesFor(p.id)
+        votes: this.countVotesFor(p.id),
+        isNPC: p.isNPC || false
       }))
     };
     io.to(this.code).emit('game_update', publicState);
@@ -399,6 +424,34 @@ io.on('connection', (socket) => {
     const player = game?.players.find(p => p.socketId === socket.id);
     if (game && player && game.host === player.id) {
       game.endGame();
+    }
+  });
+
+  // --- HOST: ADD NPC ---
+  socket.on('add_npc', ({ code }) => {
+    const game = games[code];
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id && game.state === 'LOBBY') {
+      game.addNPC();
+      game.broadcastUpdate();
+    }
+  });
+
+  // --- HOST: GET PLAYER ROLE ---
+  socket.on('get_player_role', ({ code, targetId }) => {
+    const game = games[code];
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id) {
+      const target = game.players.find(p => p.id === targetId);
+      if (target) {
+        socket.emit('player_role_info', {
+          playerId: target.id,
+          name: target.name,
+          role: target.role,
+          alignment: target.alignment,
+          isNPC: target.isNPC
+        });
+      }
     }
   });
 });

@@ -34,6 +34,7 @@ function App() {
   const [myId, setMyId] = useState(() => localStorage.getItem('vampire_id') || null);
   const [privateMsg, setPrivateMsg] = useState(() => localStorage.getItem('vampire_private_msg') || '');
   const [timer, setTimer] = useState(0);
+  const [selectedPlayerRole, setSelectedPlayerRole] = useState(null); // For host role viewing modal
 
   // Settings - also persist these
   const [settings, setSettings] = useState(() => {
@@ -106,6 +107,10 @@ function App() {
       // If error related to rejoin, clear storage
       if (msg === 'Game no longer exists.') clearSession();
       alert(msg);
+    });
+
+    socket.on('player_role_info', (data) => {
+      setSelectedPlayerRole(data);
     });
 
     return () => socket.off();
@@ -181,6 +186,12 @@ function App() {
     if (window.confirm("Are you sure you want to end the game?")) {
       socket.emit('end_game', { code });
     }
+  };
+
+  const addNPC = () => socket.emit('add_npc', { code });
+
+  const viewPlayerRole = (targetId) => {
+    socket.emit('get_player_role', { code, targetId });
   };
 
   const logout = () => {
@@ -266,8 +277,8 @@ function App() {
 
         <div className="player-grid">
           {gameState?.players.map(p => (
-            <div key={p.id} className="player-chip">
-              <div className="avatar">{p.name.charAt(0).toUpperCase()}</div>
+            <div key={p.id} className={`player-chip ${p.isNPC ? 'npc-player' : ''}`}>
+              <div className="avatar">{p.isNPC ? '🤖' : p.name.charAt(0).toUpperCase()}</div>
               <span className="player-name">{p.name} {p.id === myId ? '(You)' : ''}</span>
               {isHost && p.id !== myId && (
                 <button className="btn-kick" onClick={() => kickPlayer(p.id)}>×</button>
@@ -275,6 +286,12 @@ function App() {
             </div>
           ))}
         </div>
+
+        {isHost && (
+          <button className="btn-secondary btn-add-npc" onClick={addNPC}>
+            + Add NPC Player
+          </button>
+        )}
 
         {isHost ? (
           <button className="btn-primary btn-large" onClick={startGame}>START NIGHT</button>
@@ -323,12 +340,37 @@ function App() {
         </div>
       }
 
+      {/* Role Info Modal for Host */}
+      {selectedPlayerRole && (
+        <div className="modal-overlay" onClick={() => setSelectedPlayerRole(null)}>
+          <div className="modal-content role-modal" onClick={e => e.stopPropagation()}>
+            <h2>{selectedPlayerRole.name}</h2>
+            {selectedPlayerRole.isNPC && <span className="npc-badge">🤖 NPC</span>}
+            <div className="role-info-display">
+              <div className={`role-badge large ${selectedPlayerRole.alignment}`}>
+                {selectedPlayerRole.role || 'No role assigned'}
+              </div>
+              <p className="alignment-text">
+                Alignment: <strong>{selectedPlayerRole.alignment || 'Unknown'}</strong>
+              </p>
+            </div>
+            <button className="btn-secondary" onClick={() => setSelectedPlayerRole(null)}>Close</button>
+          </div>
+        </div>
+      )}
+
       <div className="game-board">
         <div className="players-section">
           {gameState?.players.map(p => (
-            <div key={p.id} className={`game-player-card ${!p.alive ? 'dead' : ''} ${p.id === myId ? 'me' : ''}`}>
+            <div key={p.id} className={`game-player-card ${!p.alive ? 'dead' : ''} ${p.id === myId ? 'me' : ''} ${p.isNPC ? 'npc-card' : ''}`}>
               <div className="card-top">
-                <span className="name">{p.name}</span>
+                <span
+                  className={`name ${isHost ? 'clickable-name' : ''}`}
+                  onClick={() => isHost && viewPlayerRole(p.id)}
+                  title={isHost ? 'Click to view role' : ''}
+                >
+                  {p.isNPC && '🤖 '}{p.name}
+                </span>
                 {p.alive && isVoting && amIAlive && p.id !== myId && (
                   <button className="btn-vote" onClick={() => vote(p.id)}>
                     Vote ({p.votes})
