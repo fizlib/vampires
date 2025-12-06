@@ -623,6 +623,14 @@ button:active {
   font-family: monospace;
 }
 
+.private-text pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  font-family: inherit;
+}
+
 .log-entry {
   margin-bottom: 5px;
   border-bottom: 1px solid var(--input-border);
