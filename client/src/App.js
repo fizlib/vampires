@@ -28,6 +28,11 @@ const ROLE_INFO = {
     ability: 'Each night, watch one player to see who visits them.',
     goal: 'Eliminate all vampires and survive.'
   },
+  Doctor: {
+    alignment: 'Good',
+    ability: 'Each night, heal one player to save them from vampire attacks. You have 3 heals per game.',
+    goal: 'Eliminate all vampires and survive.'
+  },
   Citizen: {
     alignment: 'Good',
     ability: 'No special ability. Use your vote wisely during the day.',
@@ -88,6 +93,7 @@ function App() {
       useDefault: true,
       Investigator: 1,
       Lookout: 1,
+      Doctor: 1,
       Vampire: 1,
       Jester: 1
     };
@@ -276,7 +282,7 @@ function App() {
     setNightTarget({ targetId, type });
     const targetPlayer = gameState?.players.find(p => p.id === targetId);
     setPrivateMsg(prev => {
-      const actionNames = { 'INVESTIGATE': 'Investigating', 'LOOKOUT': 'Watching', 'BITE': 'Voting for' };
+      const actionNames = { 'INVESTIGATE': 'Investigating', 'LOOKOUT': 'Watching', 'BITE': 'Voting for', 'HEAL': 'Healing' };
       const newMsg = `> ${actionNames[type] || 'Action on'}: ${targetPlayer?.name || 'Unknown'}\n` + prev;
       localStorage.setItem('vampire_private_msg', newMsg);
       return newMsg;
@@ -393,11 +399,12 @@ function App() {
     const roleData = [
       { key: 'Investigator', icon: '🔍', alignment: 'good', name: 'Investigator' },
       { key: 'Lookout', icon: '👁️', alignment: 'good', name: 'Lookout' },
+      { key: 'Doctor', icon: '💉', alignment: 'good', name: 'Doctor' },
       { key: 'Vampire', icon: '🧛', alignment: 'evil', name: 'Vampire' },
       { key: 'Jester', icon: '🃏', alignment: 'neutral', name: 'Jester' }
     ];
 
-    const totalConfiguredRoles = roleConfig.Investigator + roleConfig.Lookout + roleConfig.Vampire + roleConfig.Jester;
+    const totalConfiguredRoles = roleConfig.Investigator + roleConfig.Lookout + roleConfig.Doctor + roleConfig.Vampire + roleConfig.Jester;
     const citizenCount = Math.max(0, playerCount - totalConfiguredRoles);
 
     const updateRoleCount = (roleKey, delta) => {
@@ -606,6 +613,13 @@ function App() {
         </div>
       )}
 
+      {/* Doctor Info Banner */}
+      {myRole?.role === 'Doctor' && (
+        <div className="role-info-banner doctor-banner">
+          💉 You have <strong>{gameState?.healsRemaining ?? '?'}</strong> heals remaining.
+        </div>
+      )}
+
       {gameState?.state === 'GAME_OVER' &&
         <div className="modal-overlay">
           <div className="modal-content game-over-panel">
@@ -657,7 +671,7 @@ function App() {
             <div className="role-change-section">
               <h4>Change Role</h4>
               <div className="role-change-buttons">
-                {['Investigator', 'Lookout', 'Citizen', 'Vampire', 'Jester'].map(role => (
+                {['Investigator', 'Lookout', 'Doctor', 'Citizen', 'Vampire', 'Jester'].map(role => (
                   <button
                     key={role}
                     className={`btn-role-change ${selectedPlayerRole.role === role ? 'active' : ''} ${role === 'Vampire' ? 'evil' : role === 'Jester' ? 'neutral' : 'good'}`}
@@ -666,6 +680,7 @@ function App() {
                   >
                     {role === 'Investigator' && '🔍 '}
                     {role === 'Lookout' && '👁️ '}
+                    {role === 'Doctor' && '💉 '}
                     {role === 'Citizen' && '👤 '}
                     {role === 'Vampire' && '🧛 '}
                     {role === 'Jester' && '🃏 '}
@@ -717,6 +732,7 @@ function App() {
                   {nightTarget.type === 'INVESTIGATE' && '🔍 Investigating'}
                   {nightTarget.type === 'LOOKOUT' && '👁️ Watching'}
                   {nightTarget.type === 'BITE' && '🧛 Voted'}
+                  {nightTarget.type === 'HEAL' && '💉 Healing'}
                 </div>
               )}
 
@@ -744,7 +760,7 @@ function App() {
                 {(!amIAlive || !isVoting) && p.votes > 0 && <span className="vote-count">{p.votes} votes</span>}
               </div>
 
-              {p.alive && isNight && amIAlive && p.id !== myId && (
+              {p.alive && isNight && amIAlive && (p.id !== myId || myRole?.role === 'Doctor') && (
                 <div className="action-buttons">
                   {myRole?.role === 'Investigator' && (
                     <button className={`btn-action ${nightTarget?.targetId === p.id ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'INVESTIGATE')}>
@@ -759,6 +775,11 @@ function App() {
                   {myRole?.role === 'Vampire' && canTurn && !p.isVampire && (
                     <button className={`btn-action btn-danger ${nightTarget?.targetId === p.id ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'BITE')}>
                       {nightTarget?.targetId === p.id ? '✓ Voted' : 'Vote to Turn'} {p.vampireVotes > 0 ? `(${p.vampireVotes})` : ''}
+                    </button>
+                  )}
+                  {myRole?.role === 'Doctor' && (gameState?.healsRemaining > 0 || nightTarget?.type === 'HEAL') && (
+                    <button className={`btn-action btn-good ${nightTarget?.targetId === p.id ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'HEAL')}>
+                      {nightTarget?.targetId === p.id ? '✓ Healing' : 'Heal'}
                     </button>
                   )}
                 </div>

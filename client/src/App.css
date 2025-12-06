@@ -1434,3 +1434,36 @@ button:active {
   color: #e53935;
   text-transform: uppercase;
 }
+/* Doctor Info Banner */
+.doctor-banner {
+  background: linear-gradient(135deg, #0a2e0a, #1a4a1a);
+  color: #90ff90;
+  padding: 12px 20px;
+  text-align: center;
+  font-weight: bold;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  border: 2px solid #1fa31f;
+  box-shadow: 0 0 15px rgba(28, 183, 28, 0.4);
+  animation: doctorBannerPulse 2s ease-in-out infinite;
+}
+
+@keyframes doctorBannerPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(28, 183, 28, 0.4);
+    border-color: #1a8f1a;
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(60, 229, 60, 0.6);
+    border-color: #4cd64c;
+  }
+}
+
+.btn-good {
+    background: #2e7d32;
+    color: white;
+}
+.btn-good:hover {
+    background: #1b5e20;
+}
+

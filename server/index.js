@@ -86,6 +86,7 @@ class Game {
     const roleAlignments = {
       'Investigator': 'good',
       'Lookout': 'good',
+      'Doctor': 'good',
       'Citizen': 'good',
       'Vampire': 'evil',
       'Jester': 'neutral'
@@ -101,6 +102,9 @@ class Game {
       }
       for (let i = 0; i < (config.Lookout || 0); i++) {
         pool.push({ role: 'Lookout', align: roleAlignments['Lookout'] });
+      }
+      for (let i = 0; i < (config.Doctor || 0); i++) {
+        pool.push({ role: 'Doctor', align: roleAlignments['Doctor'] });
       }
       for (let i = 0; i < (config.Vampire || 0); i++) {
         pool.push({ role: 'Vampire', align: roleAlignments['Vampire'] });
@@ -122,11 +126,13 @@ class Game {
       // Default calculation based on percentages
       const investCount = Math.max(1, Math.floor(total * 0.1));
       const lookoutCount = Math.max(1, Math.floor(total * 0.1));
-      const vampCount = Math.max(1, Math.floor(total * 0.1));
+      const doctorCount = Math.max(1, Math.floor(total * 0.1)); // Add 1 doctor roughly 10%
+      const vampCount = Math.max(1, Math.floor(total * 0.15)); // Slightly more vamps
       const jesterCount = 1;
 
       for (let i = 0; i < investCount; i++) pool.push({ role: 'Investigator', align: 'good' });
       for (let i = 0; i < lookoutCount; i++) pool.push({ role: 'Lookout', align: 'good' });
+      for (let i = 0; i < doctorCount; i++) pool.push({ role: 'Doctor', align: 'good' });
       for (let i = 0; i < vampCount; i++) pool.push({ role: 'Vampire', align: 'evil' });
       for (let i = 0; i < jesterCount; i++) pool.push({ role: 'Jester', align: 'neutral' });
 
@@ -138,6 +144,11 @@ class Game {
     this.players.forEach((p, i) => {
       p.role = pool[i].role;
       p.alignment = pool[i].align;
+      if (p.role === 'Doctor') {
+        p.healsRemaining = 3;
+      } else {
+        delete p.healsRemaining;
+      }
     });
   }
 
@@ -158,6 +169,7 @@ class Game {
   resolveNight() {
     let visits = {};
     let investigationResults = {};
+    let doctorHeals = [];
 
     // 1. Process Visits
     Object.values(this.nightActions).forEach(action => {
@@ -165,9 +177,24 @@ class Game {
       if (!visits[targetId]) visits[targetId] = [];
       const actor = this.players.find(p => p.id === actorId);
       if (actor) visits[targetId].push(actor.name);
+
+      // Track doctor heals
+      if (action.type === 'HEAL') {
+        doctorHeals.push({ actorId, targetId });
+      }
     });
 
-    // 2. Vampire Logic (Every other night, starting night 2)
+    // 2. Consume Doctor Heals
+    // Doctors lose a heal attempts even if they don't value save anyone, usually? 
+    // The prompt says "3 heals that they can use". We will decrement for every action submitted.
+    doctorHeals.forEach(({ actorId }) => {
+      const doctor = this.players.find(p => p.id === actorId);
+      if (doctor && doctor.role === 'Doctor' && doctor.healsRemaining > 0) {
+        doctor.healsRemaining--;
+      }
+    });
+
+    // 3. Vampire Logic (Every other night, starting night 2)
     const canTurn = (this.round % 2 === 0);
     let turnedPlayer = null;
     if (canTurn) {
@@ -176,6 +203,8 @@ class Game {
 
       if (vampActions.length > 0) {
         // If 2+ vampires exist, they need to vote on the target
+        let potentialTargetId = null;
+
         if (aliveVampires.length > 1) {
           // Count votes for each target
           const voteCount = {};
@@ -197,15 +226,7 @@ class Game {
 
           // Only turn if there's a clear winner (no tie) and at least 2 vampires voted for the same target
           if (topTargets.length === 1 && maxVotes >= 2) {
-            const targetId = topTargets[0];
-            const target = this.players.find(p => p.id === targetId);
-            if (target && target.alive && target.role !== 'Vampire') {
-              target.role = 'Vampire';
-              target.alignment = 'evil';
-              target.isTurned = true;
-              turnedPlayer = target;
-              this.logs.push(`A dark ritual took place... someone's nature has changed.`);
-            }
+            potentialTargetId = topTargets[0];
           } else if (topTargets.length > 1) {
             // Tie - notify vampires they need to coordinate
             this.logs.push(`The vampires couldn't agree on a target...`);
@@ -225,20 +246,38 @@ class Game {
           }
         } else {
           // Only 1 vampire - original logic (last bite counts)
-          const targetId = vampActions[vampActions.length - 1].targetId;
-          const target = this.players.find(p => p.id === targetId);
+          potentialTargetId = vampActions[vampActions.length - 1].targetId;
+        }
+
+        if (potentialTargetId) {
+          const target = this.players.find(p => p.id === potentialTargetId);
           if (target && target.alive && target.role !== 'Vampire') {
-            target.role = 'Vampire';
-            target.alignment = 'evil';
-            target.isTurned = true;
-            turnedPlayer = target;
-            this.logs.push(`A dark ritual took place... someone's nature has changed.`);
+            const isHealed = doctorHeals.some(h => h.targetId === potentialTargetId);
+
+            if (isHealed) {
+              this.logs.push(`The vampires tried to attack, but their target was saved by a doctor!`);
+              aliveVampires.forEach(vamp => {
+                if (vamp.socketId) io.to(vamp.socketId).emit('private_message', `🧛 Your target was saved by a Doctor!`);
+              });
+              doctorHeals.filter(h => h.targetId === potentialTargetId).forEach(h => {
+                const doc = this.players.find(p => p.id === h.actorId);
+                if (doc && doc.socketId) {
+                  io.to(doc.socketId).emit('private_message', `💉 You successfully saved your target from a vampire attack!`);
+                }
+              });
+            } else {
+              target.role = 'Vampire';
+              target.alignment = 'evil';
+              target.isTurned = true;
+              turnedPlayer = target;
+              this.logs.push(`A dark ritual took place... someone's nature has changed.`);
+            }
           }
         }
       }
     }
 
-    // 3. Investigator
+    // 4. Investigator
     Object.keys(this.nightActions).forEach(actorId => {
       const action = this.nightActions[actorId];
       if (action.type === 'INVESTIGATE') {
@@ -247,7 +286,7 @@ class Game {
       }
     });
 
-    // 4. Lookout
+    // 5. Lookout
     Object.keys(this.nightActions).forEach(actorId => {
       const action = this.nightActions[actorId];
       if (action.type === 'LOOKOUT') {
@@ -424,6 +463,8 @@ class Game {
       const isVampire = player.role === 'Vampire';
       const playerState = {
         ...baseState,
+        // Send heal count to doctor
+        healsRemaining: player.role === 'Doctor' ? player.healsRemaining : undefined,
         players: this.players.map(p => ({
           id: p.id,
           name: p.name,
@@ -591,6 +632,16 @@ io.on('connection', (socket) => {
           });
         }
       }
+
+      // Validate HEAL action
+      if (action.type === 'HEAL') {
+        if (player.role !== 'Doctor') return;
+        if ((player.healsRemaining || 0) <= 0) {
+          socket.emit('private_message', 'You have no heals remaining!');
+          return;
+        }
+      }
+
       game.nightActions[player.id] = { ...action, actorId: player.id };
 
       // Broadcast update to show vote counts for vampires
@@ -672,6 +723,7 @@ io.on('connection', (socket) => {
         const roleAlignments = {
           'Investigator': 'good',
           'Lookout': 'good',
+          'Doctor': 'good',
           'Citizen': 'good',
           'Vampire': 'evil',
           'Jester': 'neutral'
@@ -680,6 +732,12 @@ io.on('connection', (socket) => {
         // Update the target's role
         target.role = newRole;
         target.alignment = roleAlignments[newRole] || 'good';
+
+        if (target.role === 'Doctor') {
+          target.healsRemaining = 3;
+        } else {
+          delete target.healsRemaining;
+        }
 
         // Send updated role info to the target player
         if (target.socketId) {
