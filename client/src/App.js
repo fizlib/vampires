@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 
@@ -49,6 +49,37 @@ const ROLE_INFO = {
     goal: 'Get yourself voted out during the day to win.'
   }
 };
+
+// Pre-generate snowflake data outside component to prevent regeneration
+const SNOWFLAKE_DATA = Array.from({ length: 50 }, (_, i) => ({
+  id: i,
+  left: `${Math.random() * 100}%`,
+  animationDuration: `${5 + Math.random() * 10}s`,
+  animationDelay: `${Math.random() * 5}s`,
+  fontSize: `${0.5 + Math.random() * 1}rem`,
+}));
+
+// Snowfall component defined outside App to prevent re-creation
+const Snowfall = React.memo(() => {
+  return (
+    <div className="snowfall">
+      {SNOWFLAKE_DATA.map((flake) => (
+        <div
+          key={flake.id}
+          className="snowflake"
+          style={{
+            left: flake.left,
+            animationDuration: flake.animationDuration,
+            animationDelay: flake.animationDelay,
+            fontSize: flake.fontSize,
+          }}
+        >
+          ❄
+        </div>
+      ))}
+    </div>
+  );
+});
 
 function App() {
   // Initialize state from localStorage where applicable
@@ -101,6 +132,12 @@ function App() {
     };
   });
 
+  // Theme selection - default to Christmas theme
+  const [selectedTheme, setSelectedTheme] = useState(() => {
+    const savedTheme = localStorage.getItem('vampire_theme');
+    return savedTheme || 'christmas'; // Default to Christmas theme
+  });
+
   // 1. Check for existing session on load and attempt rejoin
   useEffect(() => {
     const savedCode = localStorage.getItem('vampire_code');
@@ -145,20 +182,34 @@ function App() {
     prevGameState.current = gameState;
   }, [gameState]);
 
-  // 1.5 Theme switching based on game phase (Day = light theme, Night = dark theme)
+  // 1.5 Theme switching based on game phase and user selection
   useEffect(() => {
     const isDayPhase = gameState?.state === 'DAY_DISCUSS' || gameState?.state === 'DAY_VOTE';
     const isNightPhase = gameState?.state === 'NIGHT';
+    const isInGame = gameState?.state && gameState.state !== 'LOBBY';
 
-    if (isDayPhase) {
-      document.documentElement.setAttribute('data-theme', 'day');
-      document.documentElement.removeAttribute('data-phase');
-    } else if (isNightPhase) {
-      document.documentElement.removeAttribute('data-theme');
-      document.documentElement.setAttribute('data-phase', 'night');
+    if (isInGame) {
+      // During gameplay, override with day/night themes
+      if (isDayPhase) {
+        document.documentElement.setAttribute('data-theme', 'day');
+        document.documentElement.removeAttribute('data-phase');
+      } else if (isNightPhase) {
+        document.documentElement.removeAttribute('data-theme');
+        document.documentElement.setAttribute('data-phase', 'night');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        document.documentElement.removeAttribute('data-phase');
+      }
     } else {
-      document.documentElement.removeAttribute('data-theme');
+      // In menu/lobby, use user's selected theme
       document.documentElement.removeAttribute('data-phase');
+      if (selectedTheme === 'christmas') {
+        document.documentElement.setAttribute('data-theme', 'christmas');
+      } else if (selectedTheme === 'day') {
+        document.documentElement.setAttribute('data-theme', 'day');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
     }
 
     // Cleanup on unmount
@@ -166,7 +217,13 @@ function App() {
       document.documentElement.removeAttribute('data-theme');
       document.documentElement.removeAttribute('data-phase');
     };
-  }, [gameState?.state]);
+  }, [gameState?.state, selectedTheme]);
+
+  // Handle theme change
+  const changeTheme = (theme) => {
+    setSelectedTheme(theme);
+    localStorage.setItem('vampire_theme', theme);
+  };
 
   // 2. Socket Listeners
   useEffect(() => {
@@ -348,6 +405,7 @@ function App() {
   if (view === 'MENU') {
     return (
       <div className="container center-screen">
+        {selectedTheme === 'christmas' && <Snowfall />}
         <h1 className="title-blood">VAMPIRES</h1>
 
         <div className="row">
@@ -378,6 +436,31 @@ function App() {
             <button className="btn-secondary" onClick={initiateJoinGame}>Join Game</button>
           </div>
         </div>
+
+        {/* Theme Selector */}
+        <div className="theme-selector">
+          <button
+            className={`theme-btn theme-dark ${selectedTheme === 'dark' ? 'active' : ''}`}
+            onClick={() => changeTheme('dark')}
+            title="Dark Theme"
+          >
+            🌙
+          </button>
+          <button
+            className={`theme-btn theme-light ${selectedTheme === 'day' ? 'active' : ''}`}
+            onClick={() => changeTheme('day')}
+            title="Light Theme"
+          >
+            ☀️
+          </button>
+          <button
+            className={`theme-btn theme-christmas ${selectedTheme === 'christmas' ? 'active' : ''}`}
+            onClick={() => changeTheme('christmas')}
+            title="Christmas Theme"
+          >
+            🎄
+          </button>
+        </div>
       </div>
     );
   }
@@ -385,6 +468,7 @@ function App() {
   if (view === 'ENTER_USERNAME') {
     return (
       <div className="container center-screen">
+        {selectedTheme === 'christmas' && <Snowfall />}
         <h1 className="title-blood">VAMPIRES</h1>
         <div className="card menu-card username-card">
           <h3>{isCreating ? 'Create Your Identity' : 'Enter Your Identity'}</h3>
@@ -441,6 +525,7 @@ function App() {
 
     return (
       <div className="container">
+        {selectedTheme === 'christmas' && <Snowfall />}
         <div className="lobby-header">
           <h1>Lobby: <span className="highlight-code">{code}</span></h1>
           <div className="lobby-header-buttons">
