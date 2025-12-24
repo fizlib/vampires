@@ -41,6 +41,11 @@ class Game {
     this.votes = {};
     this.winner = null;
     this.logs = [];
+    // Jailor state
+    this.jailedPlayerId = null;
+    this.jailorId = null;
+    this.jailorPendingDeath = false;
+    this.jailChat = [];
   }
 
   addPlayer(id, name, socketId) {
@@ -88,6 +93,7 @@ class Game {
       'Lookout': 'good',
       'Doctor': 'good',
       'Citizen': 'good',
+      'Jailor': 'good',
       'Vampire': 'evil',
       'Jester': 'neutral'
     };
@@ -105,6 +111,9 @@ class Game {
       }
       for (let i = 0; i < (config.Doctor || 0); i++) {
         pool.push({ role: 'Doctor', align: roleAlignments['Doctor'] });
+      }
+      for (let i = 0; i < (config.Jailor || 0); i++) {
+        pool.push({ role: 'Jailor', align: roleAlignments['Jailor'] });
       }
       for (let i = 0; i < (config.Vampire || 0); i++) {
         pool.push({ role: 'Vampire', align: roleAlignments['Vampire'] });
@@ -127,12 +136,14 @@ class Game {
       const investCount = Math.max(1, Math.floor(total * 0.1));
       const lookoutCount = Math.max(1, Math.floor(total * 0.1));
       const doctorCount = Math.max(1, Math.floor(total * 0.1)); // Add 1 doctor roughly 10%
+      const jailorCount = total >= 6 ? 1 : 0; // Add Jailor for 6+ players
       const vampCount = Math.max(1, Math.floor(total * 0.15)); // Slightly more vamps
       const jesterCount = 1;
 
       for (let i = 0; i < investCount; i++) pool.push({ role: 'Investigator', align: 'good' });
       for (let i = 0; i < lookoutCount; i++) pool.push({ role: 'Lookout', align: 'good' });
       for (let i = 0; i < doctorCount; i++) pool.push({ role: 'Doctor', align: 'good' });
+      for (let i = 0; i < jailorCount; i++) pool.push({ role: 'Jailor', align: 'good' });
       for (let i = 0; i < vampCount; i++) pool.push({ role: 'Vampire', align: 'evil' });
       for (let i = 0; i < jesterCount; i++) pool.push({ role: 'Jester', align: 'neutral' });
 
@@ -162,6 +173,10 @@ class Game {
     this.round++;
     this.nightActions = {};
     this.votes = {};
+    // Reset jail state for new night
+    this.jailedPlayerId = null;
+    this.jailorId = null;
+    this.jailChat = [];
     this.broadcastUpdate();
     this.startTimer(this.settings.nightTime, () => this.resolveNight());
   }
@@ -308,12 +323,58 @@ class Game {
       }
     }
 
+    // 6. Jailor Execution Logic
+    if (this.jailedPlayerId && this.jailorId) {
+      const jailor = this.players.find(p => p.id === this.jailorId);
+      const prisoner = this.players.find(p => p.id === this.jailedPlayerId);
+      const jailAction = this.nightActions[this.jailorId];
+
+      if (jailAction && jailAction.type === 'EXECUTE' && prisoner && prisoner.alive) {
+        // Execute the prisoner
+        prisoner.alive = false;
+        this.logs.push(`${prisoner.name} was executed by the Jailor.`);
+
+        // If prisoner was innocent (good alignment), jailor will die
+        if (prisoner.alignment === 'good') {
+          this.jailorPendingDeath = true;
+          if (jailor && jailor.socketId) {
+            io.to(jailor.socketId).emit('private_message', '⚠️ You executed an innocent person! Guilt consumes you...');
+          }
+        } else {
+          if (jailor && jailor.socketId) {
+            io.to(jailor.socketId).emit('private_message', '🔒 Justice served. The prisoner was guilty.');
+          }
+        }
+      } else {
+        // Prisoner was not executed, just released
+        if (prisoner && prisoner.socketId) {
+          io.to(prisoner.socketId).emit('private_message', '🔓 Dawn breaks. The Jailor releases you from jail.');
+        }
+      }
+    }
+
     this.checkWinCondition();
     if (this.state !== 'GAME_OVER') this.startDayDiscuss();
   }
 
   startDayDiscuss() {
     this.state = 'DAY_DISCUSS';
+
+    // Jailor dies if they executed an innocent
+    if (this.jailorPendingDeath) {
+      const jailor = this.players.find(p => p.id === this.jailorId);
+      if (jailor && jailor.alive) {
+        jailor.alive = false;
+        this.logs.push(`${jailor.name} was consumed by guilt and died!`);
+      }
+      this.jailorPendingDeath = false;
+    }
+
+    // Clear jail state
+    this.jailedPlayerId = null;
+    this.jailorId = null;
+    this.jailChat = [];
+
     this.broadcastUpdate();
     this.startTimer(this.settings.discussionTime, () => this.startDayVote());
   }
@@ -466,6 +527,14 @@ class Game {
           totalVampires: vampireCount,
           requiredVotes: 1,
           needsVoting: vampireCount > 1
+        } : undefined,
+        // Include jail info for Jailor and jailed player
+        jailInfo: (this.state === 'NIGHT' && (player.id === this.jailorId || player.id === this.jailedPlayerId)) ? {
+          isJailor: player.id === this.jailorId,
+          isJailed: player.id === this.jailedPlayerId,
+          prisonerName: player.id === this.jailorId ? this.players.find(p => p.id === this.jailedPlayerId)?.name : null,
+          jailorName: player.id === this.jailedPlayerId ? this.players.find(p => p.id === this.jailorId)?.name : null,
+          jailChat: this.jailChat
         } : undefined
       };
       if (player.socketId) {
@@ -579,8 +648,8 @@ io.on('connection', (socket) => {
     // We need to find the player ID associated with this socket
     const player = game?.players.find(p => p.socketId === socket.id);
     if (game && game.state === 'NIGHT' && player) {
-      // Handle clearing/uncasting of action
-      if (action.clear || action.targetId === null) {
+      // Handle clearing/uncasting of action (but not EXECUTE which intentionally has null targetId)
+      if (action.clear || (action.targetId === null && action.type !== 'EXECUTE')) {
         // Check if we're clearing a BITE action - notify other vampires
         if (action.type === 'BITE' && game.nightActions[player.id]) {
           const aliveVampires = game.players.filter(p => p.role === 'Vampire' && p.alive);
@@ -623,6 +692,96 @@ io.on('connection', (socket) => {
           socket.emit('private_message', 'You have no heals remaining!');
           return;
         }
+      }
+
+      // Validate JAIL action - only Jailor can jail
+      if (action.type === 'JAIL') {
+        if (player.role !== 'Jailor') return;
+        if (!player.alive) return;
+
+        const target = game.players.find(p => p.id === action.targetId);
+        if (!target || !target.alive) {
+          socket.emit('private_message', 'Invalid target for jail.');
+          return;
+        }
+        if (target.id === player.id) {
+          socket.emit('private_message', 'You cannot jail yourself!');
+          return;
+        }
+
+        // Set jail state
+        game.jailedPlayerId = action.targetId;
+        game.jailorId = player.id;
+        game.jailChat = [];
+
+        // Clear any existing action the jailed player may have submitted
+        const existingAction = game.nightActions[action.targetId];
+        if (existingAction) {
+          // If jailed player was a vampire who voted, notify other vampires
+          if (existingAction.type === 'BITE') {
+            const aliveVampires = game.players.filter(p => p.role === 'Vampire' && p.alive && p.id !== target.id);
+            aliveVampires.forEach(vamp => {
+              if (vamp.socketId) {
+                io.to(vamp.socketId).emit('private_message', `🧛 ${target.name}'s vote was cancelled (jailed)`);
+              }
+            });
+          }
+          delete game.nightActions[action.targetId];
+        }
+
+        // Notify both parties
+        socket.emit('private_message', `\ud83d\udd12 You have jailed ${target.name}. You may now interrogate them.`);
+        if (target.socketId) {
+          io.to(target.socketId).emit('private_message', '\ud83d\udd12 You have been jailed! The Jailor wishes to speak with you. Your night action has been cancelled.');
+        }
+
+        game.broadcastUpdate();
+        return;
+      }
+
+      // Validate EXECUTE action - only Jailor can execute their prisoner
+      if (action.type === 'EXECUTE') {
+        if (player.role !== 'Jailor') return;
+        if (game.jailorId !== player.id) {
+          socket.emit('private_message', 'You have no prisoner to execute.');
+          return;
+        }
+
+        // Store the execute action
+        game.nightActions[player.id] = { type: 'EXECUTE', actorId: player.id, targetId: game.jailedPlayerId };
+
+        const prisoner = game.players.find(p => p.id === game.jailedPlayerId);
+        socket.emit('private_message', `\u2620\ufe0f You have decided to execute ${prisoner?.name || 'the prisoner'}.`);
+        if (prisoner && prisoner.socketId) {
+          io.to(prisoner.socketId).emit('private_message', '\u2620\ufe0f The Jailor has decided to execute you!');
+        }
+
+        game.broadcastUpdate();
+        return;
+      }
+
+      // Handle CANCEL_EXECUTE - Jailor can cancel their execution decision
+      if (action.type === 'CANCEL_EXECUTE') {
+        if (player.role !== 'Jailor') return;
+        if (game.jailorId !== player.id) return;
+
+        // Remove the execute action if it exists
+        if (game.nightActions[player.id]?.type === 'EXECUTE') {
+          delete game.nightActions[player.id];
+
+          const prisoner = game.players.find(p => p.id === game.jailedPlayerId);
+          socket.emit('private_message', `\u274c Execution cancelled. ${prisoner?.name || 'The prisoner'} will be released at dawn.`);
+          if (prisoner && prisoner.socketId) {
+            io.to(prisoner.socketId).emit('private_message', '\ud83d\ude0c The Jailor has decided to spare you.');
+          }
+        }
+        return;
+      }
+
+      // Block jailed players from performing night actions
+      if (game.jailedPlayerId === player.id) {
+        socket.emit('private_message', '\ud83d\udd12 You are in jail and cannot perform your night action.');
+        return;
       }
 
       game.nightActions[player.id] = { ...action, actorId: player.id };
@@ -708,6 +867,7 @@ io.on('connection', (socket) => {
           'Lookout': 'good',
           'Doctor': 'good',
           'Citizen': 'good',
+          'Jailor': 'good',
           'Vampire': 'evil',
           'Jester': 'neutral'
         };
@@ -785,6 +945,38 @@ io.on('connection', (socket) => {
 
         game.broadcastUpdate();
       }
+    }
+  });
+
+  // --- JAIL CHAT ---
+  socket.on('jail_chat_message', ({ code, message }) => {
+    const game = games[code];
+    if (!game || game.state !== 'NIGHT') return;
+
+    const player = game.players.find(p => p.socketId === socket.id);
+    if (!player) return;
+
+    // Only Jailor or jailed player can send messages
+    if (player.id !== game.jailorId && player.id !== game.jailedPlayerId) return;
+
+    const isJailor = player.id === game.jailorId;
+    const chatMessage = {
+      sender: isJailor ? 'Jailor' : 'Prisoner',
+      message: message.substring(0, 200), // Limit message length
+      timestamp: Date.now()
+    };
+
+    game.jailChat.push(chatMessage);
+
+    // Send to both parties
+    const jailor = game.players.find(p => p.id === game.jailorId);
+    const prisoner = game.players.find(p => p.id === game.jailedPlayerId);
+
+    if (jailor && jailor.socketId) {
+      io.to(jailor.socketId).emit('jail_chat_update', game.jailChat);
+    }
+    if (prisoner && prisoner.socketId) {
+      io.to(prisoner.socketId).emit('jail_chat_update', game.jailChat);
     }
   });
 });

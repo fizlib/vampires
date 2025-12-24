@@ -16,7 +16,6 @@ const generateRandomUsername = () => {
   return `${adj}${noun}${num}`;
 };
 
-// Role descriptions
 const ROLE_INFO = {
   Investigator: {
     alignment: 'Good',
@@ -32,6 +31,11 @@ const ROLE_INFO = {
     alignment: 'Good',
     ability: 'Each night, heal one player to save them from vampire attacks. You have 3 heals per game.',
     goal: 'Eliminate all vampires and survive.'
+  },
+  Jailor: {
+    alignment: 'Good',
+    ability: 'Each night, jail one player for private interrogation. You can choose to execute the prisoner.',
+    goal: 'Eliminate all vampires and survive. Warning: executing an innocent will cost your life!'
   },
   Citizen: {
     alignment: 'Good',
@@ -107,6 +111,9 @@ function App() {
   const [roleRevealed, setRoleRevealed] = useState(false); // Track if role is revealed
   const [shareLinkCopied, setShareLinkCopied] = useState(false); // Track if share link was copied
   const [showShareModal, setShowShareModal] = useState(false); // Track if share modal is open
+  const [jailChatInput, setJailChatInput] = useState(''); // Jail chat input
+  const [jailChat, setJailChat] = useState([]); // Jail chat messages
+  const [executionPending, setExecutionPending] = useState(false); // Track if Jailor decided to execute
   const prevGameState = useRef(null); // Track previous game state for transitions
 
   // Settings - also persist these
@@ -121,15 +128,21 @@ function App() {
 
   // Role configuration for custom games
   const [roleConfig, setRoleConfig] = useState(() => {
-    const savedRoleConfig = localStorage.getItem('vampire_role_config');
-    return savedRoleConfig ? JSON.parse(savedRoleConfig) : {
+    const defaultConfig = {
       useDefault: true,
       Investigator: 1,
       Lookout: 1,
       Doctor: 1,
+      Jailor: 0,
       Vampire: 1,
       Jester: 1
     };
+    const savedRoleConfig = localStorage.getItem('vampire_role_config');
+    if (savedRoleConfig) {
+      // Merge saved config with defaults to ensure all keys exist (including new roles like Jailor)
+      return { ...defaultConfig, ...JSON.parse(savedRoleConfig) };
+    }
+    return defaultConfig;
   });
 
   // Theme selection - default to Christmas theme
@@ -173,10 +186,17 @@ function App() {
     // Reset nightTarget when entering a new NIGHT phase (different round)
     if (gameState.state === 'NIGHT' && (!prev || prev.state !== 'NIGHT' || prev.round !== gameState.round)) {
       setNightTarget(null);
+      setJailChat([]); // Reset jail chat for new night
+      setExecutionPending(false); // Reset execution state for new night
     }
     // Reset voteTarget when entering DAY_VOTE
     if (gameState.state === 'DAY_VOTE' && prev?.state !== 'DAY_VOTE') {
       setVoteTarget(null);
+    }
+
+    // Sync jail chat from gameState when we first enter jail (jailInfo appears)
+    if (gameState.jailInfo && (!prev?.jailInfo) && gameState.jailInfo.jailChat) {
+      setJailChat(gameState.jailInfo.jailChat);
     }
 
     prevGameState.current = gameState;
@@ -294,6 +314,10 @@ function App() {
       setSelectedPlayerRole(data);
     });
 
+    socket.on('jail_chat_update', (chatMessages) => {
+      setJailChat(chatMessages);
+    });
+
     return () => socket.off();
   }, [view, name]);
 
@@ -355,6 +379,13 @@ function App() {
 
   const startGame = () => socket.emit('start_game', { code, roleConfig });
   const sendAction = (targetId, type) => {
+    // Special handling for EXECUTE - no targetId, target is the jailed player
+    // Server sends the private message, so we don't add one here
+    if (type === 'EXECUTE') {
+      socket.emit('night_action', { code, action: { targetId: null, type } });
+      return;
+    }
+
     // Toggle behavior: if clicking same target with same action, clear it
     if (nightTarget?.targetId === targetId && nightTarget?.type === type) {
       socket.emit('night_action', { code, action: { targetId: null, type, clear: true } });
@@ -370,7 +401,7 @@ function App() {
     setNightTarget({ targetId, type });
     const targetPlayer = gameState?.players.find(p => p.id === targetId);
     setPrivateMsg(prev => {
-      const actionNames = { 'INVESTIGATE': 'Investigating', 'LOOKOUT': 'Watching', 'BITE': 'Voting for', 'HEAL': 'Healing' };
+      const actionNames = { 'INVESTIGATE': 'Investigating', 'LOOKOUT': 'Watching', 'BITE': 'Voting for', 'HEAL': 'Healing', 'JAIL': '🔒 Jailing' };
       const newMsg = `> ${actionNames[type] || 'Action on'}: ${targetPlayer?.name || 'Unknown'}\n` + prev;
       localStorage.setItem('vampire_private_msg', newMsg);
       return newMsg;
@@ -515,11 +546,12 @@ function App() {
       { key: 'Investigator', icon: '🔍', alignment: 'good', name: 'Investigator' },
       { key: 'Lookout', icon: '👁️', alignment: 'good', name: 'Lookout' },
       { key: 'Doctor', icon: '💉', alignment: 'good', name: 'Doctor' },
+      { key: 'Jailor', icon: '🔒', alignment: 'good', name: 'Jailor' },
       { key: 'Vampire', icon: '🧛', alignment: 'evil', name: 'Vampire' },
       { key: 'Jester', icon: '🃏', alignment: 'neutral', name: 'Jester' }
     ];
 
-    const totalConfiguredRoles = roleConfig.Investigator + roleConfig.Lookout + roleConfig.Doctor + roleConfig.Vampire + roleConfig.Jester;
+    const totalConfiguredRoles = roleConfig.Investigator + roleConfig.Lookout + roleConfig.Doctor + (roleConfig.Jailor || 0) + roleConfig.Vampire + roleConfig.Jester;
     const citizenCount = Math.max(0, playerCount - totalConfiguredRoles);
 
     const updateRoleCount = (roleKey, delta) => {
@@ -810,6 +842,77 @@ function App() {
         </div>
       )}
 
+      {/* Jail Chat Modal - shows for Jailor with prisoner or jailed player */}
+      {isNight && gameState?.jailInfo && (
+        <div className="jail-modal">
+          <div className="jail-modal-content">
+            <h2>🔒 {gameState.jailInfo.isJailor ? `Interrogating: ${gameState.jailInfo.prisonerName}` : 'You are in Jail!'}</h2>
+            {gameState.jailInfo.isJailed && (
+              <p className="jail-subtitle">The Jailor wishes to speak with you. You cannot perform your night action.</p>
+            )}
+
+            <div className="jail-chat-messages">
+              {(jailChat.length > 0 ? jailChat : (gameState.jailInfo.jailChat || [])).map((msg, i) => (
+                <div key={i} className={`jail-chat-message ${msg.sender === 'Jailor' ? 'jailor-msg' : 'prisoner-msg'}`}>
+                  <span className="chat-sender">{msg.sender}:</span>
+                  <span className="chat-text">{msg.message}</span>
+                </div>
+              ))}
+              {(jailChat.length > 0 ? jailChat : (gameState.jailInfo.jailChat || [])).length === 0 && (
+                <div className="jail-chat-empty">No messages yet. Start the interrogation!</div>
+              )}
+            </div>
+
+            <div className="jail-chat-input-container">
+              <input
+                type="text"
+                className="jail-chat-input"
+                placeholder="Type a message..."
+                value={jailChatInput}
+                onChange={e => setJailChatInput(e.target.value)}
+                onKeyPress={e => {
+                  if (e.key === 'Enter' && jailChatInput.trim()) {
+                    socket.emit('jail_chat_message', { code: gameState.code, message: jailChatInput.trim() });
+                    setJailChatInput('');
+                  }
+                }}
+              />
+              <button
+                className="btn-send-message"
+                onClick={() => {
+                  if (jailChatInput.trim()) {
+                    socket.emit('jail_chat_message', { code: gameState.code, message: jailChatInput.trim() });
+                    setJailChatInput('');
+                  }
+                }}
+              >
+                Send
+              </button>
+            </div>
+
+            {gameState.jailInfo.isJailor && (
+              <button
+                className={`btn-execute ${executionPending ? 'cancel-mode' : ''}`}
+                onClick={() => {
+                  if (executionPending) {
+                    // Cancel execution
+                    socket.emit('night_action', { code: gameState.code, action: { type: 'CANCEL_EXECUTE' } });
+                    // Server sends the private message, so we don't add one here
+                    setExecutionPending(false);
+                  } else {
+                    // Execute
+                    sendAction(null, 'EXECUTE');
+                    setExecutionPending(true);
+                  }
+                }}
+              >
+                {executionPending ? '❌ Cancel Execution' : '☠️ Execute Prisoner'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {gameState?.state === 'GAME_OVER' &&
         <div className="modal-overlay">
           <div className="modal-content game-over-panel">
@@ -861,7 +964,7 @@ function App() {
             <div className="role-change-section">
               <h4>Change Role</h4>
               <div className="role-change-buttons">
-                {['Investigator', 'Lookout', 'Doctor', 'Citizen', 'Vampire', 'Jester'].map(role => (
+                {['Investigator', 'Lookout', 'Doctor', 'Jailor', 'Citizen', 'Vampire', 'Jester'].map(role => (
                   <button
                     key={role}
                     className={`btn-role-change ${selectedPlayerRole.role === role ? 'active' : ''} ${role === 'Vampire' ? 'evil' : role === 'Jester' ? 'neutral' : 'good'}`}
@@ -871,6 +974,7 @@ function App() {
                     {role === 'Investigator' && '🔍 '}
                     {role === 'Lookout' && '👁️ '}
                     {role === 'Doctor' && '💉 '}
+                    {role === 'Jailor' && '🔒 '}
                     {role === 'Citizen' && '👤 '}
                     {role === 'Vampire' && '🧛 '}
                     {role === 'Jester' && '🃏 '}
@@ -923,6 +1027,7 @@ function App() {
                   {nightTarget.type === 'LOOKOUT' && '👁️ Watching'}
                   {nightTarget.type === 'BITE' && '🧛 Voted'}
                   {nightTarget.type === 'HEAL' && '💉 Healing'}
+                  {nightTarget.type === 'JAIL' && '🔒 Jailing'}
                 </div>
               )}
 
@@ -972,6 +1077,11 @@ function App() {
                       {nightTarget?.targetId === p.id ? '✓ Healing' : 'Heal'}
                     </button>
                   )}
+                  {myRole?.role === 'Jailor' && p.id !== myId && !gameState?.jailInfo?.isJailor && (
+                    <button className={`btn-action btn-jail ${nightTarget?.targetId === p.id ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'JAIL')}>
+                      {nightTarget?.targetId === p.id ? '✓ Jailing' : '🔒 Jail'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -982,7 +1092,7 @@ function App() {
           <div className="panel logs-panel">
             <h4>Game Logs</h4>
             <div className="scroll-box">
-              {gameState?.logs.map((l, i) => <div key={i} className="log-entry">{l}</div>)}
+              {gameState?.logs.slice().reverse().map((l, i) => <div key={i} className="log-entry">{l}</div>)}
             </div>
           </div>
           <div className="panel private-panel">
