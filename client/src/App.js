@@ -257,20 +257,26 @@ function App() {
     localStorage.setItem('vampire_theme', theme);
   };
 
-  // 2. Socket Listeners
+  // 2. Socket Listeners - setup once on mount
+  // Use refs to access current values inside socket handlers to avoid stale closures
+  const nameRef = useRef(name);
   useEffect(() => {
-    socket.on('game_created', ({ code, playerId }) => {
-      saveSession(code, playerId, name);
-      setView('LOBBY');
-    });
+    nameRef.current = name;
+  }, [name]);
 
-    socket.on('joined', ({ code, playerId }) => {
-      saveSession(code, playerId, name);
+  useEffect(() => {
+    const handleGameCreated = ({ code, playerId }) => {
+      saveSession(code, playerId, nameRef.current);
+      setView('LOBBY');
+    };
+
+    const handleJoined = ({ code, playerId }) => {
+      saveSession(code, playerId, nameRef.current);
       setMyId(playerId);
       setView('LOBBY');
-    });
+    };
 
-    socket.on('game_update', (data) => {
+    const handleGameUpdate = (data) => {
       setGameState(data);
       setTimer(data.timer);
       // Update view based on game state
@@ -281,45 +287,68 @@ function App() {
         setView('GAME');
         localStorage.setItem('vampire_view', 'GAME');
       }
-    });
+    };
 
-    socket.on('timer_update', (t) => setTimer(t));
+    const handleTimerUpdate = (t) => setTimer(t);
 
-    socket.on('role_info', (data) => {
+    const handleRoleInfo = (data) => {
       setMyRole(data);
       localStorage.setItem('vampire_role', JSON.stringify(data));
-    });
+    };
 
-    socket.on('private_message', (msg) => {
+    const handlePrivateMessage = (msg) => {
       setPrivateMsg(prev => {
         const newMsg = `> ${msg}\n` + prev;
         localStorage.setItem('vampire_private_msg', newMsg);
         return newMsg;
       });
-    });
+    };
 
-    socket.on('kicked', () => {
+    const handleKicked = () => {
       clearSession();
       alert("You have been kicked from the game.");
       window.location.reload();
-    });
+    };
 
-    socket.on('error', (msg) => {
+    const handleError = (msg) => {
       // If error related to rejoin, clear storage
       if (msg === 'Game no longer exists.') clearSession();
       alert(msg);
-    });
+    };
 
-    socket.on('player_role_info', (data) => {
+    const handlePlayerRoleInfo = (data) => {
       setSelectedPlayerRole(data);
-    });
+    };
 
-    socket.on('jail_chat_update', (chatMessages) => {
+    const handleJailChatUpdate = (chatMessages) => {
       setJailChat(chatMessages);
-    });
+    };
 
-    return () => socket.off();
-  }, [view, name]);
+    socket.on('game_created', handleGameCreated);
+    socket.on('joined', handleJoined);
+    socket.on('game_update', handleGameUpdate);
+    socket.on('timer_update', handleTimerUpdate);
+    socket.on('role_info', handleRoleInfo);
+    socket.on('private_message', handlePrivateMessage);
+    socket.on('kicked', handleKicked);
+    socket.on('error', handleError);
+    socket.on('player_role_info', handlePlayerRoleInfo);
+    socket.on('jail_chat_update', handleJailChatUpdate);
+
+    // Cleanup: remove only the specific listeners we added
+    return () => {
+      socket.off('game_created', handleGameCreated);
+      socket.off('joined', handleJoined);
+      socket.off('game_update', handleGameUpdate);
+      socket.off('timer_update', handleTimerUpdate);
+      socket.off('role_info', handleRoleInfo);
+      socket.off('private_message', handlePrivateMessage);
+      socket.off('kicked', handleKicked);
+      socket.off('error', handleError);
+      socket.off('player_role_info', handlePlayerRoleInfo);
+      socket.off('jail_chat_update', handleJailChatUpdate);
+    };
+  }, []); // Empty dependency array - run only once on mount
 
   // Helpers
   const saveSession = (c, id, n) => {
