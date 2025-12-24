@@ -74,6 +74,7 @@ function App() {
   const [nightTarget, setNightTarget] = useState(null); // Track who we targeted at night
   const [voteTarget, setVoteTarget] = useState(null); // Track who we voted for
   const [roleRevealed, setRoleRevealed] = useState(false); // Track if role is revealed
+  const [shareLinkCopied, setShareLinkCopied] = useState(false); // Track if share link was copied
   const prevGameState = useRef(null); // Track previous game state for transitions
 
   // Settings - also persist these
@@ -108,6 +109,23 @@ function App() {
       socket.emit('rejoin_game', { code: savedCode, playerId: savedId });
     }
   }, []);
+
+  // 1.1 Check for join code in URL query parameter (?join=CODE)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinCode = urlParams.get('join');
+
+    if (joinCode && view === 'MENU') {
+      // Set the code and trigger join flow
+      setCode(joinCode.toUpperCase());
+      setPendingCode(joinCode.toUpperCase());
+      setIsCreating(false);
+      setView('ENTER_USERNAME');
+
+      // Clean up URL without reloading page
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [view]);
 
   // 1.2 Handle phase transitions/side-effects
   useEffect(() => {
@@ -424,7 +442,46 @@ function App() {
       <div className="container">
         <div className="lobby-header">
           <h1>Lobby: <span className="highlight-code">{code}</span></h1>
-          <button className="btn-small" onClick={logout}>Leave</button>
+          <div className="lobby-header-buttons">
+            <button
+              className={`btn-small btn-share ${shareLinkCopied ? 'copied' : ''}`}
+              onClick={() => {
+                const shareUrl = `${window.location.origin}${window.location.pathname}?join=${code}`;
+
+                // Clipboard API fallback for non-HTTPS contexts
+                const copyToClipboard = (text) => {
+                  if (navigator.clipboard && window.isSecureContext) {
+                    return navigator.clipboard.writeText(text);
+                  } else {
+                    // Fallback for HTTP contexts
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    return new Promise((resolve, reject) => {
+                      document.execCommand('copy') ? resolve() : reject();
+                      textArea.remove();
+                    });
+                  }
+                };
+
+                copyToClipboard(shareUrl).then(() => {
+                  setShareLinkCopied(true);
+                  setTimeout(() => setShareLinkCopied(false), 2000);
+                }).catch(() => {
+                  // If copy fails, show the URL in an alert as last resort
+                  alert(`Share this link: ${shareUrl}`);
+                });
+              }}
+            >
+              {shareLinkCopied ? '✓ Copied!' : '🔗 Share'}
+            </button>
+            <button className="btn-small" onClick={logout}>Leave</button>
+          </div>
         </div>
 
         <div className="player-grid">

@@ -328,6 +328,27 @@ button:active {
   margin-bottom: 20px;
 }
 
+.lobby-header-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-share {
+  background: linear-gradient(45deg, #00bcd4, #26c6da);
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.btn-share:hover {
+  background: linear-gradient(45deg, #00acc1, #00bcd4);
+  transform: translateY(-1px);
+}
+
+.btn-share.copied {
+  background: linear-gradient(45deg, #4caf50, #66bb6a);
+}
+
 .highlight-code {
   color: var(--accent);
   font-family: monospace;
@@ -1434,6 +1455,7 @@ button:active {
   color: #e53935;
   text-transform: uppercase;
 }
+
 /* Doctor Info Banner */
 .doctor-banner {
   background: linear-gradient(135deg, #0a2e0a, #1a4a1a);
@@ -1449,10 +1471,13 @@ button:active {
 }
 
 @keyframes doctorBannerPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 15px rgba(28, 183, 28, 0.4);
     border-color: #1a8f1a;
   }
+
   50% {
     box-shadow: 0 0 25px rgba(60, 229, 60, 0.6);
     border-color: #4cd64c;
@@ -1460,10 +1485,10 @@ button:active {
 }
 
 .btn-good {
-    background: #2e7d32;
-    color: white;
-}
-.btn-good:hover {
-    background: #1b5e20;
+  background: #2e7d32;
+  color: white;
 }
 
+.btn-good:hover {
+  background: #1b5e20;
+}
