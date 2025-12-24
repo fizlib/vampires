@@ -154,7 +154,7 @@
   background-clip: text;
 }
 
-/* Christmas Theme */
+/* Christmas Theme (Base/Default - for menu/lobby) */
 [data-theme="christmas"] {
   --bg-color: #0a1f0a;
   --card-bg: #142214;
@@ -172,6 +172,127 @@
   --header-bg: linear-gradient(135deg, #1a2e1a 0%, #0d1f0d 100%);
   --panel-bg: #0f1f0f;
   --overlay-bg: rgba(10, 31, 10, 0.95);
+}
+
+/* Christmas Day Theme - Same as base (green) for consistency */
+[data-theme="christmas-day"] {
+  --bg-color: #0a1f0a;
+  --card-bg: #142214;
+  --primary: #c41e3a;
+  /* Christmas Red */
+  --secondary: #228b22;
+  /* Forest Green */
+  --accent: #ffd700;
+  /* Gold */
+  --danger: #dc143c;
+  --text: #f5f5f5;
+  --muted: #9db09d;
+  --input-bg: #1a2e1a;
+  --input-border: #2d4a2d;
+  --header-bg: linear-gradient(135deg, #1a2e1a 0%, #0d1f0d 100%);
+  --panel-bg: #0f1f0f;
+  --overlay-bg: rgba(10, 31, 10, 0.95);
+}
+
+/* Christmas Day specific overrides */
+[data-theme="christmas-day"] .title-blood {
+  background: linear-gradient(135deg, #c41e3a, #ffd700, #228b22);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  animation: christmasGlow 3s ease-in-out infinite;
+}
+
+[data-theme="christmas-day"] .btn-primary {
+  background: linear-gradient(45deg, #c41e3a, #e74c3c);
+  box-shadow: 0 4px 15px rgba(196, 30, 58, 0.4);
+}
+
+[data-theme="christmas-day"] .btn-secondary {
+  background: #1a3d1a;
+  color: var(--text);
+  border: 1px solid #2d5a2d;
+}
+
+[data-theme="christmas-day"] .phase-label {
+  color: var(--accent);
+}
+
+[data-theme="christmas-day"] .timer-badge {
+  background: #1a3d1a;
+  color: var(--accent);
+}
+
+/* Christmas Night Theme - Cool, wintery, magical */
+[data-theme="christmas-night"] {
+  --bg-color: #0a0f1a;
+  --card-bg: #121a2a;
+  --primary: #c41e3a;
+  /* Christmas Red */
+  --secondary: #4a90d9;
+  /* Icy Blue */
+  --accent: #c0c0c0;
+  /* Silver */
+  --danger: #dc143c;
+  --text: #e8f0ff;
+  --muted: #8090a8;
+  --input-bg: #1a2540;
+  --input-border: #2d4060;
+  --header-bg: linear-gradient(135deg, #1a2540 0%, #0a0f1a 100%);
+  --panel-bg: #0f1525;
+  --overlay-bg: rgba(10, 15, 26, 0.95);
+}
+
+/* Christmas Night specific overrides */
+[data-theme="christmas-night"] .title-blood {
+  background: linear-gradient(135deg, #c41e3a, #c0c0c0, #4a90d9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  animation: christmasNightGlow 3s ease-in-out infinite;
+}
+
+@keyframes christmasNightGlow {
+
+  0%,
+  100% {
+    filter: drop-shadow(0 0 10px rgba(74, 144, 217, 0.5)) drop-shadow(0 0 20px rgba(192, 192, 192, 0.3));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 20px rgba(74, 144, 217, 0.8)) drop-shadow(0 0 40px rgba(192, 192, 192, 0.5));
+  }
+}
+
+[data-theme="christmas-night"] .btn-primary {
+  background: linear-gradient(45deg, #c41e3a, #a01830);
+  box-shadow: 0 4px 15px rgba(196, 30, 58, 0.4);
+}
+
+[data-theme="christmas-night"] .btn-secondary {
+  background: #1a3050;
+  color: var(--text);
+  border: 1px solid #2d4a70;
+}
+
+[data-theme="christmas-night"] .phase-label {
+  color: #c0c0c0;
+}
+
+[data-theme="christmas-night"] .timer-badge {
+  background: #1a3050;
+  color: #c0c0c0;
+}
+
+[data-theme="christmas-night"] .avatar {
+  background: linear-gradient(135deg, #c41e3a, #4a90d9);
+}
+
+[data-theme="christmas-night"] .modal-content {
+  border: 2px solid #c0c0c0;
+  box-shadow: 0 8px 30px rgba(192, 192, 192, 0.2);
 }
 
 /* Christmas theme transition effects */
@@ -272,7 +393,9 @@
 }
 
 /* Snowfall Animation */
-[data-theme="christmas"] .snowfall {
+[data-theme="christmas"] .snowfall,
+[data-theme="christmas-day"] .snowfall,
+[data-theme="christmas-night"] .snowfall {
   position: fixed;
   top: 0;
   left: 0;
@@ -283,7 +406,9 @@
   overflow: hidden;
 }
 
-[data-theme="christmas"] .snowflake {
+[data-theme="christmas"] .snowflake,
+[data-theme="christmas-day"] .snowflake,
+[data-theme="christmas-night"] .snowflake {
   position: absolute;
   top: -10px;
   color: white;

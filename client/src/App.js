@@ -188,24 +188,36 @@ function App() {
     const isNightPhase = gameState?.state === 'NIGHT';
     const isInGame = gameState?.state && gameState.state !== 'LOBBY';
 
-    if (isInGame) {
-      // During gameplay, override with day/night themes
+    // Always remove phase attribute first
+    document.documentElement.removeAttribute('data-phase');
+
+    if (selectedTheme === 'christmas') {
+      // Christmas theme with day/night variants
+      if (isInGame) {
+        if (isDayPhase) {
+          document.documentElement.setAttribute('data-theme', 'christmas-day');
+        } else if (isNightPhase) {
+          document.documentElement.setAttribute('data-theme', 'christmas-night');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'christmas');
+        }
+      } else {
+        // Menu/lobby uses base christmas theme
+        document.documentElement.setAttribute('data-theme', 'christmas');
+      }
+    } else if (isInGame) {
+      // During gameplay with non-Christmas theme, use day/night themes
       if (isDayPhase) {
         document.documentElement.setAttribute('data-theme', 'day');
-        document.documentElement.removeAttribute('data-phase');
       } else if (isNightPhase) {
         document.documentElement.removeAttribute('data-theme');
         document.documentElement.setAttribute('data-phase', 'night');
       } else {
         document.documentElement.removeAttribute('data-theme');
-        document.documentElement.removeAttribute('data-phase');
       }
     } else {
-      // In menu/lobby, use user's selected theme
-      document.documentElement.removeAttribute('data-phase');
-      if (selectedTheme === 'christmas') {
-        document.documentElement.setAttribute('data-theme', 'christmas');
-      } else if (selectedTheme === 'day') {
+      // In menu/lobby with non-Christmas theme
+      if (selectedTheme === 'day') {
         document.documentElement.setAttribute('data-theme', 'day');
       } else {
         document.documentElement.removeAttribute('data-theme');
@@ -736,6 +748,7 @@ function App() {
 
   return (
     <div className="container game-layout">
+      {selectedTheme === 'christmas' && <Snowfall />}
       <div className="game-header">
         <div className="phase-indicator">
           <span className="phase-label">{gameState?.state.replace('_', ' ')}</span>
