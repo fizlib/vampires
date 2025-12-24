@@ -75,6 +75,7 @@ function App() {
   const [voteTarget, setVoteTarget] = useState(null); // Track who we voted for
   const [roleRevealed, setRoleRevealed] = useState(false); // Track if role is revealed
   const [shareLinkCopied, setShareLinkCopied] = useState(false); // Track if share link was copied
+  const [showShareModal, setShowShareModal] = useState(false); // Track if share modal is open
   const prevGameState = useRef(null); // Track previous game state for transitions
 
   // Settings - also persist these
@@ -444,45 +445,79 @@ function App() {
           <h1>Lobby: <span className="highlight-code">{code}</span></h1>
           <div className="lobby-header-buttons">
             <button
-              className={`btn-small btn-share ${shareLinkCopied ? 'copied' : ''}`}
-              onClick={() => {
-                const shareUrl = `${window.location.origin}${window.location.pathname}?join=${code}`;
-
-                // Clipboard API fallback for non-HTTPS contexts
-                const copyToClipboard = (text) => {
-                  if (navigator.clipboard && window.isSecureContext) {
-                    return navigator.clipboard.writeText(text);
-                  } else {
-                    // Fallback for HTTP contexts
-                    const textArea = document.createElement('textarea');
-                    textArea.value = text;
-                    textArea.style.position = 'fixed';
-                    textArea.style.left = '-999999px';
-                    textArea.style.top = '-999999px';
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
-                    return new Promise((resolve, reject) => {
-                      document.execCommand('copy') ? resolve() : reject();
-                      textArea.remove();
-                    });
-                  }
-                };
-
-                copyToClipboard(shareUrl).then(() => {
-                  setShareLinkCopied(true);
-                  setTimeout(() => setShareLinkCopied(false), 2000);
-                }).catch(() => {
-                  // If copy fails, show the URL in an alert as last resort
-                  alert(`Share this link: ${shareUrl}`);
-                });
-              }}
+              className="btn-small btn-share"
+              onClick={() => setShowShareModal(true)}
             >
-              {shareLinkCopied ? '✓ Copied!' : '🔗 Share'}
+              Share
             </button>
             <button className="btn-small" onClick={logout}>Leave</button>
           </div>
         </div>
+
+        {/* Share Modal */}
+        {showShareModal && (
+          <div className="modal-overlay" onClick={() => setShowShareModal(false)}>
+            <div className="modal-content share-modal" onClick={e => e.stopPropagation()}>
+              <h2>Share Game</h2>
+              <p className="share-subtitle">Scan QR code or copy the link below</p>
+
+              <div className="qr-code-container">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}${window.location.pathname}?join=${code}`)}`}
+                  alt="QR Code to join game"
+                  className="qr-code"
+                />
+              </div>
+
+              <div className="share-url-container">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}${window.location.pathname}?join=${code}`}
+                  className="share-url-input"
+                  onClick={e => e.target.select()}
+                />
+                <button
+                  className={`btn-copy ${shareLinkCopied ? 'copied' : ''}`}
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?join=${code}`;
+
+                    // Clipboard API fallback for non-HTTPS contexts
+                    const copyToClipboard = (text) => {
+                      if (navigator.clipboard && window.isSecureContext) {
+                        return navigator.clipboard.writeText(text);
+                      } else {
+                        const textArea = document.createElement('textarea');
+                        textArea.value = text;
+                        textArea.style.position = 'fixed';
+                        textArea.style.left = '-999999px';
+                        textArea.style.top = '-999999px';
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        return new Promise((resolve, reject) => {
+                          document.execCommand('copy') ? resolve() : reject();
+                          textArea.remove();
+                        });
+                      }
+                    };
+
+                    copyToClipboard(shareUrl).then(() => {
+                      setShareLinkCopied(true);
+                      setTimeout(() => setShareLinkCopied(false), 2000);
+                    }).catch(() => {
+                      alert('Failed to copy. Please select and copy manually.');
+                    });
+                  }}
+                >
+                  {shareLinkCopied ? '✓ Copied!' : '📋 Copy'}
+                </button>
+              </div>
+
+              <button className="btn-secondary" onClick={() => setShowShareModal(false)}>Close</button>
+            </div>
+          </div>
+        )}
 
         <div className="player-grid">
           {gameState?.players.map(p => (
