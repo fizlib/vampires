@@ -250,9 +250,17 @@ class Game {
         if (potentialTargetId) {
           const target = this.players.find(p => p.id === potentialTargetId);
           if (target && target.alive && target.role !== 'Vampire') {
+            // Check if target is jailed - jailed players are protected from vampire bites
+            const isJailed = this.jailedPlayerId === potentialTargetId;
             const isHealed = doctorHeals.some(h => h.targetId === potentialTargetId);
 
-            if (isHealed) {
+            if (isJailed) {
+              // Jailed players are protected from vampire bites
+              this.logs.push(`The vampires tried to attack, but their target was unreachable!`);
+              aliveVampires.forEach(vamp => {
+                if (vamp.socketId) io.to(vamp.socketId).emit('private_message', `🧛 Your target was protected by the Jailor!`);
+              });
+            } else if (isHealed) {
               this.logs.push(`The vampires tried to attack, but their target was saved by a doctor!`);
               aliveVampires.forEach(vamp => {
                 if (vamp.socketId) io.to(vamp.socketId).emit('private_message', `🧛 Your target was saved by a Doctor!`);
