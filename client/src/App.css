@@ -2093,7 +2093,6 @@ button:active {
   padding: 12px;
   display: flex;
   flex-direction: column;
-  max-height: 250px;
 }
 
 .chat-panel h4 {
@@ -2121,7 +2120,6 @@ button:active {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 6px;
   min-height: 100px;
-  max-height: 150px;
 }
 
 .chat-message {
