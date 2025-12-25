@@ -153,6 +153,12 @@ function App() {
 
   // 1. Check for existing session on load and attempt rejoin
   useEffect(() => {
+    // Skip rejoin if there's a join code in the URL - player wants to join a new game
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('join')) {
+      return;
+    }
+
     const savedCode = localStorage.getItem('vampire_code');
     const savedId = localStorage.getItem('vampire_id');
 
@@ -166,7 +172,24 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const joinCode = urlParams.get('join');
 
-    if (joinCode && view === 'MENU') {
+    // Allow joining from MENU or from GAME view (e.g., game over or player wants to leave)
+    // No need to check gameState since it may not be loaded yet on page refresh
+    const canJoin = view === 'MENU' || view === 'GAME';
+
+    if (joinCode && canJoin) {
+      // Clear existing session if we're joining a new game from game over
+      if (view === 'GAME') {
+        localStorage.removeItem('vampire_code');
+        localStorage.removeItem('vampire_id');
+        localStorage.removeItem('vampire_view');
+        localStorage.removeItem('vampire_role');
+        localStorage.removeItem('vampire_private_msg');
+        setGameState(null);
+        setMyId(null);
+        setMyRole(null);
+        setPrivateMsg('');
+      }
+
       // Set the code and trigger join flow
       setCode(joinCode.toUpperCase());
       setPendingCode(joinCode.toUpperCase());
