@@ -268,10 +268,11 @@ class Game {
         if (this.settings.enableTTS && ttsCtrl) {
           const provider = this.settings.ttsProvider || 'google';
           console.log(`[Game] TTS enabled (${provider}), synthesizing for ${npc.name}...`);
-          // Build options for ElevenLabs (voiceId from NPC, modelId from settings)
+          // Build options for ElevenLabs (voiceId from NPC, modelId from settings, gender for voice matching)
           const ttsOptions = {
             voiceId: npc.elevenlabsVoiceId || null,
-            modelId: this.settings.elevenlabsModel || null
+            modelId: this.settings.elevenlabsModel || null,
+            gender: npc.gender || null
           };
           ttsCtrl.synthesizeSpeech(message, npc.id, this.settings.npcNationality || 'english', ttsOptions)
             .then(audioBase64 => {
@@ -350,18 +351,20 @@ class Game {
 
   async addNPC() {
     const id = 'npc_' + Math.random().toString(36).substr(2, 9);
-    let name = '[NPC] ' + generateNPCName();
+    let name = generateNPCName();
     let personality = null;
     let talkingStyle = null;
+    let gender = null;
 
     // Try to get AI generated profile
     if (this.ai) {
       const existingNames = this.players.map(p => p.name);
       const profile = await this.ai.generateNPCProfile(existingNames);
       if (profile) {
-        name = '[NPC] ' + profile.name;
+        name = profile.name;
         personality = profile.personality;
         talkingStyle = profile.talkingStyle;
+        gender = profile.gender || null;
       }
     }
 
@@ -371,7 +374,8 @@ class Game {
       alive: true, isTurned: false, connected: true,
       isNPC: true,
       personality,
-      talkingStyle
+      talkingStyle,
+      gender
     };
     this.players.push(npcPlayer);
     return npcPlayer;
@@ -1261,7 +1265,7 @@ io.on('connection', (socket) => {
       if (target) {
         socket.emit('npc_details', {
           id: target.id,
-          name: target.name.replace('[NPC] ', ''),
+          name: target.name,
           personality: target.personality || '',
           talkingStyle: target.talkingStyle || '',
           elevenlabsVoiceId: target.elevenlabsVoiceId || ''
@@ -1277,7 +1281,7 @@ io.on('connection', (socket) => {
     if (game && player && game.host === player.id && game.state === 'LOBBY') {
       const target = game.players.find(p => p.id === targetId && p.isNPC);
       if (target) {
-        target.name = '[NPC] ' + name.trim();
+        target.name = name.trim();
         target.personality = personality?.trim() || null;
         target.talkingStyle = talkingStyle?.trim() || null;
         target.elevenlabsVoiceId = elevenlabsVoiceId || null;

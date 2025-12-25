@@ -74,9 +74,10 @@ class ElevenLabsTTSController {
      * Get or assign a consistent voice for an NPC
      * @param {string} npcId - The NPC's unique ID
      * @param {string} voiceIdOverride - Optional specific voice ID to use
+     * @param {string} gender - Optional gender ('male' or 'female') to filter voices
      * @returns {object} Voice configuration
      */
-    getVoiceForNPC(npcId, voiceIdOverride = null) {
+    getVoiceForNPC(npcId, voiceIdOverride = null, gender = null) {
         // If a specific voice override is provided, use it
         if (voiceIdOverride) {
             const voice = ELEVENLABS_VOICES.find(v => v.id === voiceIdOverride);
@@ -92,10 +93,20 @@ class ElevenLabsTTSController {
             return this.npcVoices[npcId];
         }
 
-        // Assign random voice
-        const selectedVoice = ELEVENLABS_VOICES[Math.floor(Math.random() * ELEVENLABS_VOICES.length)];
+        // Filter voices by gender if provided
+        let voicePool = ELEVENLABS_VOICES;
+        if (gender && (gender === 'male' || gender === 'female')) {
+            const genderFiltered = ELEVENLABS_VOICES.filter(v => v.gender === gender);
+            if (genderFiltered.length > 0) {
+                voicePool = genderFiltered;
+                console.log(`[ElevenLabs] Filtering voices by gender: ${gender} (${genderFiltered.length} voices available)`);
+            }
+        }
+
+        // Assign random voice from the filtered pool
+        const selectedVoice = voicePool[Math.floor(Math.random() * voicePool.length)];
         this.npcVoices[npcId] = selectedVoice;
-        console.log(`[ElevenLabs] Assigned voice ${selectedVoice.name} to NPC ${npcId}`);
+        console.log(`[ElevenLabs] Assigned voice ${selectedVoice.name} (${selectedVoice.gender}) to NPC ${npcId}`);
         return selectedVoice;
     }
 
@@ -118,7 +129,7 @@ class ElevenLabsTTSController {
         }
 
         try {
-            const voice = this.getVoiceForNPC(npcId, options.voiceId);
+            const voice = this.getVoiceForNPC(npcId, options.voiceId, options.gender);
             const modelId = options.modelId || 'eleven_turbo_v2_5';
 
             console.log(`[ElevenLabs] Synthesizing with model ${modelId}, voice ${voice.name}: "${text.substring(0, 50)}..."`);

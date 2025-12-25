@@ -150,7 +150,7 @@ class AIController {
 
     async generateNPCProfile(existingNames = []) {
         console.log(`[AI] Generating NPC Profile (nationality: ${this.nationality})...`);
-        const forbiddenNames = existingNames.map(n => n.replace('[NPC] ', '').trim()).join(", ");
+        const forbiddenNames = existingNames.map(n => n.trim()).join(", ");
 
         // Name instructions based on nationality
         const nameInstruction = this.nationality === 'lithuanian'
@@ -166,6 +166,7 @@ class AIController {
         Respond with a JSON object: 
         { 
             "name": "A unique realistic first name only. Must NOT be in the excluded list.", 
+            "gender": "male or female - based on the generated name",
             "personality": "A brief description of their personality (e.g., paranoid, aggressive, analytical, quiet)",
             "talkingStyle": "A brief description of how they talk (e.g., uses lots of slang, formal, stutters, shouts, speaks in riddles)"
         }
