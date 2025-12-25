@@ -108,8 +108,8 @@ class AIController {
         const recentChats = gameState.gameChat.slice(-10).map(c => `${c.senderName}: ${c.message}`).join("\n");
 
         // Language instruction based on nationality
-        const languageInstruction = this.nationality === 'russian'
-            ? 'IMPORTANT: You MUST respond in Russian language (Cyrillic script).'
+        const languageInstruction = this.nationality === 'lithuanian'
+            ? 'IMPORTANT: You MUST respond in Lithuanian language.'
             : 'Respond in English.';
 
         const prompt = this.getSystemPrompt(player, gameState) +
@@ -153,8 +153,8 @@ class AIController {
         const forbiddenNames = existingNames.map(n => n.replace('[NPC] ', '').trim()).join(", ");
 
         // Name instructions based on nationality
-        const nameInstruction = this.nationality === 'russian'
-            ? 'Generate a Russian first name (e.g., Dmitri, Natasha, Alexei, Olga, Ivan, Svetlana, Boris, Anastasia). The name should be authentic Russian.'
+        const nameInstruction = this.nationality === 'lithuanian'
+            ? 'Generate a Lithuanian first name (e.g., Vytautas, Giedrius, Rasa, Eglė, Jonas, Dalia, Mindaugas, Aušra). The name should be authentic Lithuanian.'
             : 'Generate an English/American first name (e.g., James, Sarah, Michael, Emily, David, Jessica). The name should be a common English name.';
 
         const prompt = `Generate a unique profile for a player in a social deduction game (like Mafia/Werewolf).

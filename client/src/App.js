@@ -882,7 +882,7 @@ function App() {
                     }}
                   >
                     <option value="english">English</option>
-                    <option value="russian">Russian</option>
+                    <option value="lithuanian">Lithuanian</option>
                   </select>
                 </div>
               )}
