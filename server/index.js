@@ -3,10 +3,21 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const AIController = require('./ai');
-const TTSController = require('./tts');
+const GoogleTTSController = require('./tts');
+const ElevenLabsTTSController = require('./elevenlabs-tts');
 
-// Initialize TTS controller (singleton) if credentials are available
-const ttsController = new TTSController();
+// Initialize TTS controllers (singletons) if credentials are available
+const googleTTSController = new GoogleTTSController();
+const elevenLabsTTSController = new ElevenLabsTTSController();
+
+// Helper to get the appropriate TTS controller based on settings
+function getTTSController(ttsProvider) {
+  if (ttsProvider === 'elevenlabs') {
+    return elevenLabsTTSController.isAvailable() ? elevenLabsTTSController : null;
+  }
+  // Default to Google TTS
+  return googleTTSController.isAvailable() ? googleTTSController : null;
+}
 
 // Load API key from env or use empty string (will fail gracefully if not present)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
@@ -67,8 +78,8 @@ class Game {
       this.ai = null;
     }
 
-    // TTS Controller reference (uses global singleton)
-    this.tts = (this.settings.enableTTS && ttsController.isAvailable()) ? ttsController : null;
+    // TTS Controller reference (uses global helper to select provider)
+    this.tts = this.settings.enableTTS ? getTTSController(this.settings.ttsProvider) : null;
   }
 
   // Trigger AI Actions
@@ -239,9 +250,16 @@ class Game {
         }
 
         // Generate TTS audio and send to host only
-        if (this.settings.enableTTS && ttsController.isAvailable()) {
-          console.log(`[Game] TTS enabled, synthesizing for ${npc.name}...`);
-          ttsController.synthesizeSpeech(message, npc.id, this.settings.npcNationality || 'english')
+        const ttsCtrl = getTTSController(this.settings.ttsProvider);
+        if (this.settings.enableTTS && ttsCtrl) {
+          const provider = this.settings.ttsProvider || 'google';
+          console.log(`[Game] TTS enabled (${provider}), synthesizing for ${npc.name}...`);
+          // Build options for ElevenLabs (voiceId from NPC, modelId from settings)
+          const ttsOptions = {
+            voiceId: npc.elevenlabsVoiceId || null,
+            modelId: this.settings.elevenlabsModel || null
+          };
+          ttsCtrl.synthesizeSpeech(message, npc.id, this.settings.npcNationality || 'english', ttsOptions)
             .then(audioBase64 => {
               if (audioBase64) {
                 const hostPlayer = this.players.find(p => p.id === this.host);
@@ -257,7 +275,8 @@ class Game {
             })
             .catch(err => console.error('[Game] TTS synthesis error:', err));
         } else if (this.settings.enableTTS) {
-          console.log(`[Game] TTS requested but not available (check GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_TTS_API_KEY)`);
+          const provider = this.settings.ttsProvider || 'google';
+          console.log(`[Game] TTS requested but ${provider} provider not available`);
         }
       }
     } catch (err) {
@@ -1209,14 +1228,15 @@ io.on('connection', (socket) => {
           id: target.id,
           name: target.name.replace('[NPC] ', ''),
           personality: target.personality || '',
-          talkingStyle: target.talkingStyle || ''
+          talkingStyle: target.talkingStyle || '',
+          elevenlabsVoiceId: target.elevenlabsVoiceId || ''
         });
       }
     }
   });
 
   // --- HOST: UPDATE NPC DETAILS ---
-  socket.on('update_npc', ({ code, targetId, name, personality, talkingStyle }) => {
+  socket.on('update_npc', ({ code, targetId, name, personality, talkingStyle, elevenlabsVoiceId }) => {
     const game = games[code];
     const player = game?.players.find(p => p.socketId === socket.id);
     if (game && player && game.host === player.id && game.state === 'LOBBY') {
@@ -1225,9 +1245,18 @@ io.on('connection', (socket) => {
         target.name = '[NPC] ' + name.trim();
         target.personality = personality?.trim() || null;
         target.talkingStyle = talkingStyle?.trim() || null;
+        target.elevenlabsVoiceId = elevenlabsVoiceId || null;
         game.broadcastUpdate();
       }
     }
+  });
+
+  // --- GET ELEVENLABS OPTIONS ---
+  socket.on('get_elevenlabs_options', () => {
+    socket.emit('elevenlabs_options', {
+      models: ElevenLabsTTSController.getAvailableModels(),
+      voices: ElevenLabsTTSController.getAvailableVoices()
+    });
   });
 
   // --- HOST: GET PLAYER ROLE ---

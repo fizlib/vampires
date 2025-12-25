@@ -122,7 +122,8 @@ function App() {
   const [executionPending, setExecutionPending] = useState(false); // Track if Jailor decided to execute
   const [gameChat, setGameChat] = useState([]); // Game chat messages
   const [chatInput, setChatInput] = useState(''); // Game chat input
-  const [editingNPC, setEditingNPC] = useState(null); // NPC being edited (holds { id, name, personality, talkingStyle })
+  const [editingNPC, setEditingNPC] = useState(null); // NPC being edited (holds { id, name, personality, talkingStyle, elevenlabsVoiceId })
+  const [elevenlabsOptions, setElevenlabsOptions] = useState({ models: [], voices: [] }); // ElevenLabs models and voices
   const prevGameState = useRef(null); // Track previous game state for transitions
   const chatMessagesRef = useRef(null); // Ref for auto-scrolling chat
   const jailChatMessagesRef = useRef(null); // Ref for auto-scrolling jail chat
@@ -140,6 +141,8 @@ function App() {
       chatEnabled: true,
       enableAI: false,
       enableTTS: false,
+      ttsProvider: 'google',
+      elevenlabsModel: 'eleven_turbo_v2_5',
       npcNationality: 'english'
     };
     if (savedSettings) {
@@ -402,6 +405,10 @@ function App() {
       setEditingNPC(data);
     };
 
+    const handleElevenlabsOptions = (data) => {
+      setElevenlabsOptions(data);
+    };
+
     // TTS Audio handler with queue for sequential playback
     const handleTTSAudio = ({ audio, senderName, senderId }) => {
       console.log(`[TTS] Received audio for ${senderName}`);
@@ -470,6 +477,10 @@ function App() {
     socket.on('chat_update', handleChatUpdate);
     socket.on('npc_details', handleNPCDetails);
     socket.on('tts_audio', handleTTSAudio);
+    socket.on('elevenlabs_options', handleElevenlabsOptions);
+
+    // Request ElevenLabs options on mount
+    socket.emit('get_elevenlabs_options');
 
     // Cleanup: remove only the specific listeners we added
     return () => {
@@ -486,6 +497,7 @@ function App() {
       socket.off('chat_update', handleChatUpdate);
       socket.off('npc_details', handleNPCDetails);
       socket.off('tts_audio', handleTTSAudio);
+      socket.off('elevenlabs_options', handleElevenlabsOptions);
     };
   }, []); // Empty dependency array - run only once on mount
 
@@ -865,6 +877,22 @@ function App() {
                     rows={3}
                   />
                 </div>
+
+                {settings.ttsProvider === 'elevenlabs' && settings.enableTTS && (
+                  <div className="form-group">
+                    <label>🔊 ElevenLabs Voice</label>
+                    <select
+                      className="input-modern"
+                      value={editingNPC.elevenlabsVoiceId || ''}
+                      onChange={e => setEditingNPC({ ...editingNPC, elevenlabsVoiceId: e.target.value })}
+                    >
+                      <option value="">Random (Auto-assign)</option>
+                      {elevenlabsOptions.voices.map(voice => (
+                        <option key={voice.id} value={voice.id}>{voice.name} ({voice.gender})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="button-row">
@@ -877,7 +905,8 @@ function App() {
                       targetId: editingNPC.id,
                       name: editingNPC.name,
                       personality: editingNPC.personality,
-                      talkingStyle: editingNPC.talkingStyle
+                      talkingStyle: editingNPC.talkingStyle,
+                      elevenlabsVoiceId: editingNPC.elevenlabsVoiceId || null
                     });
                     setEditingNPC(null);
                   }}
@@ -1040,6 +1069,41 @@ function App() {
                     />
                     🔊 NPC Text-to-Speech
                   </label>
+                </div>
+              )}
+              {settings.enableAI && settings.enableTTS && (
+                <div className="game-setting-item">
+                  <label>TTS Provider:</label>
+                  <select
+                    value={settings.ttsProvider || 'google'}
+                    onChange={e => {
+                      const newSettings = { ...settings, ttsProvider: e.target.value };
+                      setSettings(newSettings);
+                      localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                      socket.emit('update_settings', { code, settings: newSettings });
+                    }}
+                  >
+                    <option value="google">Google Cloud TTS</option>
+                    <option value="elevenlabs">ElevenLabs</option>
+                  </select>
+                </div>
+              )}
+              {settings.enableAI && settings.enableTTS && settings.ttsProvider === 'elevenlabs' && (
+                <div className="game-setting-item">
+                  <label>ElevenLabs Model:</label>
+                  <select
+                    value={settings.elevenlabsModel || 'eleven_turbo_v2_5'}
+                    onChange={e => {
+                      const newSettings = { ...settings, elevenlabsModel: e.target.value };
+                      setSettings(newSettings);
+                      localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                      socket.emit('update_settings', { code, settings: newSettings });
+                    }}
+                  >
+                    {elevenlabsOptions.models.map(model => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
                 </div>
               )}
             </div>
