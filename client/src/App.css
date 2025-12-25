@@ -2337,3 +2337,37 @@ button:active {
   accent-color: var(--secondary);
   cursor: pointer;
 }
+
+/* Select dropdown for settings */
+.setting-select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+}
+
+.setting-select:hover {
+  border-color: var(--secondary);
+}
+
+.setting-select:focus {
+  outline: none;
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 2px rgba(156, 29, 231, 0.2);
+}
+
+.setting-select option {
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 8px;
+}

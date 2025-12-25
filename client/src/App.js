@@ -135,7 +135,8 @@ function App() {
       votingTime: 15,
       revealRole: true,
       chatEnabled: true,
-      enableAI: false
+      enableAI: false,
+      npcNationality: 'english'
     };
     if (savedSettings) {
       return { ...defaultSettings, ...JSON.parse(savedSettings) };
@@ -867,6 +868,24 @@ function App() {
                   Enable AI NPCs
                 </label>
               </div>
+              {settings.enableAI && (
+                <div className="game-setting-item">
+                  <label>NPCs Nationality</label>
+                  <select
+                    className="setting-select"
+                    value={settings.npcNationality || 'english'}
+                    onChange={e => {
+                      const newSettings = { ...settings, npcNationality: e.target.value };
+                      setSettings(newSettings);
+                      localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                      socket.emit('update_settings', { code, settings: newSettings });
+                    }}
+                  >
+                    <option value="english">English</option>
+                    <option value="russian">Russian</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         )}

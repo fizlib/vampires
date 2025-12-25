@@ -58,7 +58,7 @@ class Game {
 
     // AI Controller
     if (this.settings.enableAI && GEMINI_API_KEY) {
-      this.ai = new AIController(GEMINI_API_KEY);
+      this.ai = new AIController(GEMINI_API_KEY, this.settings.npcNationality || 'english');
     } else {
       this.ai = null;
     }
@@ -890,12 +890,12 @@ io.on('connection', (socket) => {
       // Merge new settings with existing settings
       game.settings = { ...game.settings, ...settings };
 
-      // Re-initialize AI controller if enableAI setting changed
-      if (settings.enableAI !== undefined) {
-        if (settings.enableAI && GEMINI_API_KEY) {
+      // Re-initialize AI controller if enableAI or npcNationality setting changed
+      if (settings.enableAI !== undefined || settings.npcNationality !== undefined) {
+        if ((settings.enableAI ?? game.settings.enableAI) && GEMINI_API_KEY) {
           const AIController = require('./ai');
-          game.ai = new AIController(GEMINI_API_KEY);
-        } else {
+          game.ai = new AIController(GEMINI_API_KEY, game.settings.npcNationality || 'english');
+        } else if (settings.enableAI === false) {
           game.ai = null;
         }
       }

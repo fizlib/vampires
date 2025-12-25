@@ -1,9 +1,10 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class AIController {
-    constructor(apiKey) {
+    constructor(apiKey, nationality = 'english') {
         this.genAI = new GoogleGenerativeAI(apiKey);
         this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        this.nationality = nationality;
     }
 
     async generateNightAction(player, gameState) {
@@ -106,6 +107,11 @@ class AIController {
         // Get last 10 chat messages
         const recentChats = gameState.gameChat.slice(-10).map(c => `${c.senderName}: ${c.message}`).join("\n");
 
+        // Language instruction based on nationality
+        const languageInstruction = this.nationality === 'russian'
+            ? 'IMPORTANT: You MUST respond in Russian language (Cyrillic script).'
+            : 'Respond in English.';
+
         const prompt = this.getSystemPrompt(player, gameState) +
             `\nIt is currently DAY DISCUSSION. 
       
@@ -117,7 +123,8 @@ class AIController {
       - Defend yourself if accused.
       - Accuse others if you have suspicion.
       - If you have nothing relevant to say or want to remain silent, respond with just "SILENCE".
-      - Keep it under 100 characters.`;
+      - Keep it under 100 characters.
+      ${languageInstruction}`;
 
         try {
             const result = await this.model.generateContent(prompt);
@@ -142,16 +149,23 @@ class AIController {
     }
 
     async generateNPCProfile(existingNames = []) {
-        console.log("[AI] Generating NPC Profile...");
+        console.log(`[AI] Generating NPC Profile (nationality: ${this.nationality})...`);
         const forbiddenNames = existingNames.map(n => n.replace('[NPC] ', '').trim()).join(", ");
+
+        // Name instructions based on nationality
+        const nameInstruction = this.nationality === 'russian'
+            ? 'Generate a Russian first name (e.g., Dmitri, Natasha, Alexei, Olga, Ivan, Svetlana, Boris, Anastasia). The name should be authentic Russian.'
+            : 'Generate an English/American first name (e.g., James, Sarah, Michael, Emily, David, Jessica). The name should be a common English name.';
 
         const prompt = `Generate a unique profile for a player in a social deduction game (like Mafia/Werewolf).
         
         Existing names you MUST NOT USE: ${forbiddenNames}
         
+        ${nameInstruction}
+        
         Respond with a JSON object: 
         { 
-            "name": "A unique realistic first name only (can be English or Lithuanian). Must NOT be in the excluded list.", 
+            "name": "A unique realistic first name only. Must NOT be in the excluded list.", 
             "personality": "A brief description of their personality (e.g., paranoid, aggressive, analytical, quiet)",
             "talkingStyle": "A brief description of how they talk (e.g., uses lots of slang, formal, stutters, shouts, speaks in riddles)"
         }
