@@ -54,6 +54,52 @@ class AIController {
         }
     }
 
+    async generateVoteIntent(player, gameState) {
+        console.log(`[AI] Generating Vote Intent for ${player.name}...`);
+        const prompt = this.getSystemPrompt(player, gameState) +
+            `\nIt is currently DAY DISCUSSION. You are listening to the conversation.
+      Who are you most suspicious of right now?
+      Respond with a JSON object: { "vote": "PlayerName" } or { "vote": null } if unsure.
+      Do not include markdown formatting, just raw JSON.`;
+
+        try {
+            const result = await this.model.generateContent(prompt);
+            const text = result.response.text();
+            const decision = this.parseJSON(text);
+            console.log(`[AI] Vote Intent for ${player.name}:`, JSON.stringify(decision));
+            return decision;
+        } catch (error) {
+            console.error("AI Vote Intent Error:", error);
+            return { vote: null };
+        }
+    }
+
+    async generateUpdatedVote(player, gameState, currentVoteName) {
+        console.log(`[AI] Re-evaluating Vote for ${player.name} (Currently voting: ${currentVoteName})...`);
+        const prompt = this.getSystemPrompt(player, gameState) +
+            `\nIt is currently DAY VOTING.
+      You have currently voted for: ${currentVoteName || "No one"}.
+      Considering the current vote counts and situation, do you want to CHANGE your vote?
+      
+      Respond with a JSON object: { "vote": "NewTargetName" }
+      - If you want to keep your vote, return the same name: { "vote": "${currentVoteName}" }.
+      - If you want to change, return the new name.
+      - If you want to unvote/abstain, return { "vote": null }.
+      
+      Do not include markdown formatting, just raw JSON.`;
+
+        try {
+            const result = await this.model.generateContent(prompt);
+            const text = result.response.text();
+            const decision = this.parseJSON(text);
+            console.log(`[AI] Updated Vote Decision for ${player.name}:`, JSON.stringify(decision));
+            return decision;
+        } catch (error) {
+            console.error("AI Updated Vote Error:", error);
+            return { vote: currentVoteName }; // Default to keeping current vote
+        }
+    }
+
     async generateChat(player, gameState) {
         console.log(`[AI] Generating Chat for ${player.name}...`);
 

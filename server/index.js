@@ -54,6 +54,7 @@ class Game {
     this.framedPlayers = {};
     // Game chat state
     this.gameChat = [];
+    this.aiVoteIntents = {}; // Stores preliminary vote decisions during discussion
 
     // AI Controller
     if (this.settings.enableAI && GEMINI_API_KEY) {
@@ -118,31 +119,54 @@ class Game {
 
     // Day Voting
     if (this.state === 'DAY_VOTE') {
-      for (const npc of npcPlayers) {
-        setTimeout(async () => {
-          if (!npc.alive) return;
-          const decision = await this.ai.generateDayVote(npc, this);
-          if (decision.vote) {
-            // Flexible matching
-            let target = this.players.find(p => p.name === decision.vote);
-
-            if (!target) {
-              // Try partial match: if vote string is part of player name or vice versa
-              // useful for "[NPC] Name" matching "Name"
-              target = this.players.find(p => p.name.includes(decision.vote) || decision.vote.includes(p.name));
-            }
-
-            if (target && target.alive) {
-              this.votes[npc.id] = target.id;
-              console.log(`[Game] NPC ${npc.name} voted for ${target.name} (matched from '${decision.vote}')`);
-              this.broadcastUpdate();
-            } else {
-              console.log(`[Game] NPC ${npc.name} tried to vote for '${decision.vote}' but target invalid/dead. Available: ${this.players.map(p => p.name).join(', ')}`);
-            }
-          } else {
-            console.log(`[Game] NPC ${npc.name} abstained from voting.`);
+      const handleVote = (npc, voteName) => {
+        if (voteName) {
+          let target = this.players.find(p => p.name === voteName);
+          if (!target) {
+            target = this.players.find(p => p.name.includes(voteName) || voteName.includes(p.name));
           }
-        }, Math.random() * 5000 + 2000);
+          if (target && target.alive) {
+            if (this.votes[npc.id] !== target.id) {
+              this.votes[npc.id] = target.id;
+              console.log(`[Game] NPC ${npc.name} voted for ${target.name}`);
+              this.broadcastUpdate();
+            }
+          }
+        } else {
+          // Null means unvote or abstain
+          if (this.votes[npc.id]) {
+            delete this.votes[npc.id];
+            console.log(`[Game] NPC ${npc.name} unvoted/abstained.`);
+            this.broadcastUpdate();
+          }
+        }
+      };
+
+      for (const npc of npcPlayers) {
+        // 1. Initial Vote
+        const intent = this.aiVoteIntents[npc.id];
+        // Quicker vote if they have intent
+        const initialDelay = intent ? Math.random() * 2000 + 500 : Math.random() * 4000 + 2000;
+
+        setTimeout(async () => {
+          if (!npc.alive || this.state !== 'DAY_VOTE') return;
+          let decisionName = intent;
+          if (!decisionName) {
+            const res = await this.ai.generateDayVote(npc, this);
+            decisionName = res.vote;
+          }
+          handleVote(npc, decisionName);
+        }, initialDelay);
+
+        // 2. Re-evaluation
+        setTimeout(async () => {
+          if (!npc.alive || this.state !== 'DAY_VOTE') return;
+          const currentTargetId = this.votes[npc.id];
+          const currentTarget = currentTargetId ? this.players.find(p => p.id === currentTargetId) : null;
+
+          const res = await this.ai.generateUpdatedVote(npc, this, currentTarget?.name || null);
+          handleVote(npc, res.vote);
+        }, Math.random() * 3000 + 8000);
       }
     }
 
@@ -189,8 +213,28 @@ class Game {
           }, delay);
         };
 
-        // Start the loop
+        // Start the chat loop
         chatLoop();
+
+        // Start intent loop to form opinions during discussion
+        const intentLoop = () => {
+          if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
+          // Delay 10-20 seconds
+          const delay = Math.random() * 10000 + 10000;
+          setTimeout(async () => {
+            if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
+            try {
+              const decision = await this.ai.generateVoteIntent(npc, this);
+              if (decision.vote) {
+                this.aiVoteIntents[npc.id] = decision.vote;
+              }
+            } catch (err) {
+              console.error(err);
+            }
+            intentLoop();
+          }, delay);
+        };
+        intentLoop();
       }
     }
   }
@@ -578,6 +622,7 @@ class Game {
 
     // Clear game chat for new day
     this.gameChat = [];
+    this.aiVoteIntents = {}; // Reset vote intents for new day
 
     this.broadcastUpdate();
     this.startTimer(this.settings.discussionTime, () => this.startDayVote());
@@ -588,7 +633,7 @@ class Game {
     this.state = 'DAY_VOTE';
     this.votes = {};
     this.broadcastUpdate();
-    this.startTimer(15, () => this.resolveVoting());
+    this.startTimer(this.settings.votingTime || 15, () => this.resolveVoting());
     this.triggerAIActions(); // Trigger AI for voting
   }
 
@@ -833,6 +878,28 @@ io.on('connection', (socket) => {
         io.sockets.sockets.get(target.socketId)?.leave(code); // Force leave room
       }
       game.removePlayer(targetId);
+      game.broadcastUpdate();
+    }
+  });
+
+  // --- HOST: UPDATE SETTINGS ---
+  socket.on('update_settings', ({ code, settings }) => {
+    const game = games[code];
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id && game.state === 'LOBBY') {
+      // Merge new settings with existing settings
+      game.settings = { ...game.settings, ...settings };
+
+      // Re-initialize AI controller if enableAI setting changed
+      if (settings.enableAI !== undefined) {
+        if (settings.enableAI && GEMINI_API_KEY) {
+          const AIController = require('./ai');
+          game.ai = new AIController(GEMINI_API_KEY);
+        } else {
+          game.ai = null;
+        }
+      }
+
       game.broadcastUpdate();
     }
   });

@@ -129,14 +129,18 @@ function App() {
   // Settings - also persist these
   const [settings, setSettings] = useState(() => {
     const savedSettings = localStorage.getItem('vampire_settings');
-    return savedSettings ? JSON.parse(savedSettings) : {
+    const defaultSettings = {
       discussionTime: 120,
       nightTime: 60,
-      revealRole: true,
+      votingTime: 15,
       revealRole: true,
       chatEnabled: true,
       enableAI: false
     };
+    if (savedSettings) {
+      return { ...defaultSettings, ...JSON.parse(savedSettings) };
+    }
+    return defaultSettings;
   });
 
   // Role configuration for custom games
@@ -574,50 +578,7 @@ function App() {
         <div className="row">
           <div className="card menu-card">
             <h3>Create Room</h3>
-            <div className="setting-row">
-              <label>Discussion (s)</label>
-              <input type="number" value={settings.discussionTime} onChange={e => {
-                const newSettings = { ...settings, discussionTime: parseInt(e.target.value) };
-                setSettings(newSettings);
-                localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
-              }} />
-            </div>
-            <div className="setting-row">
-              <label>Night (s)</label>
-              <input type="number" value={settings.nightTime} onChange={e => {
-                const newSettings = { ...settings, nightTime: parseInt(e.target.value) };
-                setSettings(newSettings);
-                localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
-              }} />
-            </div>
-            <div className="setting-row checkbox-row">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={settings.chatEnabled !== false}
-                  onChange={e => {
-                    const newSettings = { ...settings, chatEnabled: e.target.checked };
-                    setSettings(newSettings);
-                    localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
-                  }}
-                />
-                Enable Chat
-              </label>
-            </div>
-            <div className="setting-row checkbox-row">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={settings.enableAI || false}
-                  onChange={e => {
-                    const newSettings = { ...settings, enableAI: e.target.checked };
-                    setSettings(newSettings);
-                    localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
-                  }}
-                />
-                Enable AI NPCs
-              </label>
-            </div>
+            <p className="hint-text">Configure game settings in the lobby</p>
             <button className="btn-primary" onClick={initiateCreateGame}>Create Game</button>
           </div>
 
@@ -813,6 +774,101 @@ function App() {
           <button className="btn-secondary btn-add-npc" onClick={addNPC}>
             + Add NPC Player
           </button>
+        )}
+
+        {/* Game Settings Panel - Host Only */}
+        {isHost && (
+          <div className="game-settings-panel">
+            <div className="game-settings-header">
+              <h3>⚙️ Game Settings</h3>
+            </div>
+            <div className="game-settings-grid">
+              <div className="game-setting-item">
+                <label>Discussion Time</label>
+                <div className="game-setting-input-row">
+                  <input
+                    type="number"
+                    min="10"
+                    max="600"
+                    value={settings.discussionTime}
+                    onChange={e => {
+                      const newSettings = { ...settings, discussionTime: parseInt(e.target.value) || 120 };
+                      setSettings(newSettings);
+                      localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                      socket.emit('update_settings', { code, settings: newSettings });
+                    }}
+                  />
+                  <span className="setting-unit">sec</span>
+                </div>
+              </div>
+              <div className="game-setting-item">
+                <label>Night Time</label>
+                <div className="game-setting-input-row">
+                  <input
+                    type="number"
+                    min="10"
+                    max="300"
+                    value={settings.nightTime}
+                    onChange={e => {
+                      const newSettings = { ...settings, nightTime: parseInt(e.target.value) || 60 };
+                      setSettings(newSettings);
+                      localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                      socket.emit('update_settings', { code, settings: newSettings });
+                    }}
+                  />
+                  <span className="setting-unit">sec</span>
+                </div>
+              </div>
+              <div className="game-setting-item">
+                <label>Voting Time</label>
+                <div className="game-setting-input-row">
+                  <input
+                    type="number"
+                    min="5"
+                    max="120"
+                    value={settings.votingTime}
+                    onChange={e => {
+                      const newSettings = { ...settings, votingTime: parseInt(e.target.value) || 15 };
+                      setSettings(newSettings);
+                      localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                      socket.emit('update_settings', { code, settings: newSettings });
+                    }}
+                  />
+                  <span className="setting-unit">sec</span>
+                </div>
+              </div>
+              <div className="game-setting-item checkbox-setting">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={settings.chatEnabled !== false}
+                    onChange={e => {
+                      const newSettings = { ...settings, chatEnabled: e.target.checked };
+                      setSettings(newSettings);
+                      localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                      socket.emit('update_settings', { code, settings: newSettings });
+                    }}
+                  />
+                  Enable Chat
+                </label>
+              </div>
+              <div className="game-setting-item checkbox-setting">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={settings.enableAI || false}
+                    onChange={e => {
+                      const newSettings = { ...settings, enableAI: e.target.checked };
+                      setSettings(newSettings);
+                      localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                      socket.emit('update_settings', { code, settings: newSettings });
+                    }}
+                  />
+                  Enable AI NPCs
+                </label>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Role Configuration Panel - Host Only */}
