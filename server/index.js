@@ -1140,6 +1140,38 @@ io.on('connection', (socket) => {
     }
   });
 
+  // --- HOST: GET NPC DETAILS ---
+  socket.on('get_npc_details', ({ code, targetId }) => {
+    const game = games[code];
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id) {
+      const target = game.players.find(p => p.id === targetId && p.isNPC);
+      if (target) {
+        socket.emit('npc_details', {
+          id: target.id,
+          name: target.name.replace('[NPC] ', ''),
+          personality: target.personality || '',
+          talkingStyle: target.talkingStyle || ''
+        });
+      }
+    }
+  });
+
+  // --- HOST: UPDATE NPC DETAILS ---
+  socket.on('update_npc', ({ code, targetId, name, personality, talkingStyle }) => {
+    const game = games[code];
+    const player = game?.players.find(p => p.socketId === socket.id);
+    if (game && player && game.host === player.id && game.state === 'LOBBY') {
+      const target = game.players.find(p => p.id === targetId && p.isNPC);
+      if (target) {
+        target.name = '[NPC] ' + name.trim();
+        target.personality = personality?.trim() || null;
+        target.talkingStyle = talkingStyle?.trim() || null;
+        game.broadcastUpdate();
+      }
+    }
+  });
+
   // --- HOST: GET PLAYER ROLE ---
   socket.on('get_player_role', ({ code, targetId }) => {
     const game = games[code];

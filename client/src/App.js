@@ -122,6 +122,7 @@ function App() {
   const [executionPending, setExecutionPending] = useState(false); // Track if Jailor decided to execute
   const [gameChat, setGameChat] = useState([]); // Game chat messages
   const [chatInput, setChatInput] = useState(''); // Game chat input
+  const [editingNPC, setEditingNPC] = useState(null); // NPC being edited (holds { id, name, personality, talkingStyle })
   const prevGameState = useRef(null); // Track previous game state for transitions
   const chatMessagesRef = useRef(null); // Ref for auto-scrolling chat
   const jailChatMessagesRef = useRef(null); // Ref for auto-scrolling jail chat
@@ -394,6 +395,10 @@ function App() {
       setGameChat(chatMessages);
     };
 
+    const handleNPCDetails = (data) => {
+      setEditingNPC(data);
+    };
+
     socket.on('game_created', handleGameCreated);
     socket.on('joined', handleJoined);
     socket.on('game_update', handleGameUpdate);
@@ -405,6 +410,7 @@ function App() {
     socket.on('player_role_info', handlePlayerRoleInfo);
     socket.on('jail_chat_update', handleJailChatUpdate);
     socket.on('chat_update', handleChatUpdate);
+    socket.on('npc_details', handleNPCDetails);
 
     // Cleanup: remove only the specific listeners we added
     return () => {
@@ -419,6 +425,7 @@ function App() {
       socket.off('player_role_info', handlePlayerRoleInfo);
       socket.off('jail_chat_update', handleJailChatUpdate);
       socket.off('chat_update', handleChatUpdate);
+      socket.off('npc_details', handleNPCDetails);
     };
   }, []); // Empty dependency array - run only once on mount
 
@@ -759,13 +766,85 @@ function App() {
           </div>
         )}
 
+        {/* NPC Edit Modal */}
+        {editingNPC && (
+          <div className="modal-overlay" onClick={() => setEditingNPC(null)}>
+            <div className="modal-content npc-edit-modal" onClick={e => e.stopPropagation()}>
+              <h2>🤖 Edit NPC</h2>
+
+              <div className="npc-edit-form">
+                <div className="form-group">
+                  <label>Name</label>
+                  <input
+                    type="text"
+                    className="input-modern"
+                    value={editingNPC.name}
+                    onChange={e => setEditingNPC({ ...editingNPC, name: e.target.value })}
+                    placeholder="NPC Name"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Personality Description</label>
+                  <textarea
+                    className="input-modern textarea-modern"
+                    value={editingNPC.personality}
+                    onChange={e => setEditingNPC({ ...editingNPC, personality: e.target.value })}
+                    placeholder="e.g., paranoid, aggressive, analytical, quiet..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Talking Style</label>
+                  <textarea
+                    className="input-modern textarea-modern"
+                    value={editingNPC.talkingStyle}
+                    onChange={e => setEditingNPC({ ...editingNPC, talkingStyle: e.target.value })}
+                    placeholder="e.g., uses slang, formal, stutters, speaks in riddles..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="button-row">
+                <button className="btn-secondary" onClick={() => setEditingNPC(null)}>Cancel</button>
+                <button
+                  className="btn-primary"
+                  onClick={() => {
+                    socket.emit('update_npc', {
+                      code,
+                      targetId: editingNPC.id,
+                      name: editingNPC.name,
+                      personality: editingNPC.personality,
+                      talkingStyle: editingNPC.talkingStyle
+                    });
+                    setEditingNPC(null);
+                  }}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="player-grid">
           {gameState?.players.map(p => (
-            <div key={p.id} className={`player-chip ${p.isNPC ? 'npc-player' : ''}`}>
+            <div
+              key={p.id}
+              className={`player-chip ${p.isNPC ? 'npc-player' : ''} ${isHost && p.isNPC ? 'npc-editable' : ''}`}
+              onClick={() => {
+                if (isHost && p.isNPC) {
+                  socket.emit('get_npc_details', { code, targetId: p.id });
+                }
+              }}
+            >
               <div className="avatar">{p.isNPC ? '🤖' : p.name.charAt(0).toUpperCase()}</div>
               <span className="player-name">{p.name} {p.id === myId ? '(You)' : ''}</span>
+              {isHost && p.isNPC && <span className="npc-edit-icon">✏️</span>}
               {isHost && p.id !== myId && (
-                <button className="btn-kick" onClick={() => kickPlayer(p.id)}>×</button>
+                <button className="btn-kick" onClick={(e) => { e.stopPropagation(); kickPlayer(p.id); }}>×</button>
               )}
             </div>
           ))}
