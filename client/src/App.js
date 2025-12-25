@@ -47,6 +47,11 @@ const ROLE_INFO = {
     ability: 'Every other night, vote to turn a citizen. The target with the most votes is turned (ties are random)!',
     goal: 'Turn or eliminate all non-vampires.'
   },
+  'Vampire Framer': {
+    alignment: 'Evil',
+    ability: 'Each night, frame one player to appear as a vampire to investigators. Every other night, also vote to turn someone.',
+    goal: 'Turn or eliminate all non-vampires.'
+  },
   Jester: {
     alignment: 'Neutral',
     ability: 'No special night ability. Try to act suspicious!',
@@ -107,6 +112,7 @@ function App() {
   const [timer, setTimer] = useState(0);
   const [selectedPlayerRole, setSelectedPlayerRole] = useState(null); // For host role viewing modal
   const [nightTarget, setNightTarget] = useState(null); // Track who we targeted at night
+  const [frameTarget, setFrameTarget] = useState(null); // Track frame target for Vampire Framer (separate from nightTarget)
   const [voteTarget, setVoteTarget] = useState(null); // Track who we voted for
   const [roleRevealed, setRoleRevealed] = useState(false); // Track if role is revealed
   const [shareLinkCopied, setShareLinkCopied] = useState(false); // Track if share link was copied
@@ -135,6 +141,7 @@ function App() {
       Doctor: 1,
       Jailor: 0,
       Vampire: 1,
+      'Vampire Framer': 0,
       Jester: 1
     };
     const savedRoleConfig = localStorage.getItem('vampire_role_config');
@@ -206,9 +213,10 @@ function App() {
     const prev = prevGameState.current;
     if (!gameState) return;
 
-    // Reset nightTarget when entering a new NIGHT phase (different round)
+    // Reset nightTarget and frameTarget when entering a new NIGHT phase (different round)
     if (gameState.state === 'NIGHT' && (!prev || prev.state !== 'NIGHT' || prev.round !== gameState.round)) {
       setNightTarget(null);
+      setFrameTarget(null);
       setJailChat([]); // Reset jail chat for new night
       setExecutionPending(false); // Reset execution state for new night
     }
@@ -438,6 +446,30 @@ function App() {
       return;
     }
 
+    // Special handling for FRAME - uses separate frameTarget state so Vampire Framer can do both FRAME and BITE
+    if (type === 'FRAME') {
+      // Toggle behavior: if clicking same target, clear it
+      if (frameTarget === targetId) {
+        socket.emit('night_action', { code, action: { targetId: null, type, clear: true } });
+        setFrameTarget(null);
+        setPrivateMsg(prev => {
+          const newMsg = `> Cancelled framing\n` + prev;
+          localStorage.setItem('vampire_private_msg', newMsg);
+          return newMsg;
+        });
+        return;
+      }
+      socket.emit('night_action', { code, action: { targetId, type } });
+      setFrameTarget(targetId);
+      const targetPlayer = gameState?.players.find(p => p.id === targetId);
+      setPrivateMsg(prev => {
+        const newMsg = `> 🎭 Framing: ${targetPlayer?.name || 'Unknown'}\n` + prev;
+        localStorage.setItem('vampire_private_msg', newMsg);
+        return newMsg;
+      });
+      return;
+    }
+
     // Toggle behavior: if clicking same target with same action, clear it
     if (nightTarget?.targetId === targetId && nightTarget?.type === type) {
       socket.emit('night_action', { code, action: { targetId: null, type, clear: true } });
@@ -453,7 +485,7 @@ function App() {
     setNightTarget({ targetId, type });
     const targetPlayer = gameState?.players.find(p => p.id === targetId);
     setPrivateMsg(prev => {
-      const actionNames = { 'INVESTIGATE': 'Investigating', 'LOOKOUT': 'Watching', 'BITE': 'Voting for', 'HEAL': 'Healing', 'JAIL': '🔒 Jailing' };
+      const actionNames = { 'INVESTIGATE': 'Investigating', 'LOOKOUT': 'Watching', 'BITE': 'Voting for', 'HEAL': 'Healing', 'JAIL': '🔒 Jailing', 'FRAME': '🎭 Framing' };
       const newMsg = `> ${actionNames[type] || 'Action on'}: ${targetPlayer?.name || 'Unknown'}\n` + prev;
       localStorage.setItem('vampire_private_msg', newMsg);
       return newMsg;
@@ -600,10 +632,11 @@ function App() {
       { key: 'Doctor', icon: '💉', alignment: 'good', name: 'Doctor' },
       { key: 'Jailor', icon: '🔒', alignment: 'good', name: 'Jailor' },
       { key: 'Vampire', icon: '🧛', alignment: 'evil', name: 'Vampire' },
+      { key: 'Vampire Framer', icon: '🎭', alignment: 'evil', name: 'Vampire Framer' },
       { key: 'Jester', icon: '🃏', alignment: 'neutral', name: 'Jester' }
     ];
 
-    const totalConfiguredRoles = roleConfig.Investigator + roleConfig.Lookout + roleConfig.Doctor + (roleConfig.Jailor || 0) + roleConfig.Vampire + roleConfig.Jester;
+    const totalConfiguredRoles = roleConfig.Investigator + roleConfig.Lookout + roleConfig.Doctor + (roleConfig.Jailor || 0) + roleConfig.Vampire + (roleConfig['Vampire Framer'] || 0) + roleConfig.Jester;
     const citizenCount = Math.max(0, playerCount - totalConfiguredRoles);
 
     const updateRoleCount = (roleKey, delta) => {
@@ -1016,10 +1049,10 @@ function App() {
             <div className="role-change-section">
               <h4>Change Role</h4>
               <div className="role-change-buttons">
-                {['Investigator', 'Lookout', 'Doctor', 'Jailor', 'Citizen', 'Vampire', 'Jester'].map(role => (
+                {['Investigator', 'Lookout', 'Doctor', 'Jailor', 'Citizen', 'Vampire', 'Vampire Framer', 'Jester'].map(role => (
                   <button
                     key={role}
-                    className={`btn-role-change ${selectedPlayerRole.role === role ? 'active' : ''} ${role === 'Vampire' ? 'evil' : role === 'Jester' ? 'neutral' : 'good'}`}
+                    className={`btn-role-change ${selectedPlayerRole.role === role ? 'active' : ''} ${role === 'Vampire' || role === 'Vampire Framer' ? 'evil' : role === 'Jester' ? 'neutral' : 'good'}`}
                     onClick={() => changePlayerRole(selectedPlayerRole.playerId, role)}
                     disabled={selectedPlayerRole.role === role}
                   >
@@ -1029,6 +1062,7 @@ function App() {
                     {role === 'Jailor' && '🔒 '}
                     {role === 'Citizen' && '👤 '}
                     {role === 'Vampire' && '🧛 '}
+                    {role === 'Vampire Framer' && '🎭 '}
                     {role === 'Jester' && '🃏 '}
                     {role}
                   </button>
@@ -1067,10 +1101,10 @@ function App() {
       <div className="game-board">
         <div className="players-section">
           {gameState?.players.map(p => (
-            <div key={p.id} className={`game-player-card ${!p.alive ? 'dead' : ''} ${p.id === myId ? 'me' : ''} ${p.isNPC ? 'npc-card' : ''} ${nightTarget?.targetId === p.id && isNight ? 'target-night' : ''} ${p.isVampire && myRole?.role === 'Vampire' ? 'vampire-teammate' : ''}`}>
+            <div key={p.id} className={`game-player-card ${!p.alive ? 'dead' : ''} ${p.id === myId ? 'me' : ''} ${p.isNPC ? 'npc-card' : ''} ${nightTarget?.targetId === p.id && isNight ? 'target-night' : ''} ${p.isVampire && (myRole?.role === 'Vampire' || myRole?.role === 'Vampire Framer') ? 'vampire-teammate' : ''}`}>
               {/* Vampire teammate indicator - always visible to vampires */}
-              {p.isVampire && myRole?.role === 'Vampire' && p.id !== myId && (
-                <div className="vampire-badge">🧛 Vampire</div>
+              {p.isVampire && (myRole?.role === 'Vampire' || myRole?.role === 'Vampire Framer') && p.id !== myId && (
+                <div className="vampire-badge">{p.vampireRole === 'Vampire Framer' ? '🎭 Framer' : '🧛 Vampire'}</div>
               )}
               {/* Target indicator badges */}
               {nightTarget?.targetId === p.id && isNight && (
@@ -1133,6 +1167,18 @@ function App() {
                     <button className={`btn-action btn-jail ${nightTarget?.targetId === p.id ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'JAIL')}>
                       {nightTarget?.targetId === p.id ? '✓ Jailing' : '🔒 Jail'}
                     </button>
+                  )}
+                  {myRole?.role === 'Vampire Framer' && !p.isVampire && (
+                    <>
+                      <button className={`btn-action btn-frame ${frameTarget === p.id ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'FRAME')}>
+                        {frameTarget === p.id ? '✓ Framing' : '🎭 Frame'}
+                      </button>
+                      {canTurn && (
+                        <button className={`btn-action btn-danger ${nightTarget?.targetId === p.id && nightTarget?.type === 'BITE' ? 'action-selected' : ''}`} onClick={() => sendAction(p.id, 'BITE')}>
+                          {nightTarget?.targetId === p.id && nightTarget?.type === 'BITE' ? '✓ Voted' : 'Vote to Turn'} {p.vampireVotes > 0 ? `(${p.vampireVotes})` : ''}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               )}

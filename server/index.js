@@ -46,6 +46,8 @@ class Game {
     this.jailorId = null;
     this.jailorPendingDeath = false;
     this.jailChat = [];
+    // Vampire Framer state
+    this.framedPlayers = {};
   }
 
   addPlayer(id, name, socketId) {
@@ -95,6 +97,7 @@ class Game {
       'Citizen': 'good',
       'Jailor': 'good',
       'Vampire': 'evil',
+      'Vampire Framer': 'evil',
       'Jester': 'neutral'
     };
 
@@ -117,6 +120,9 @@ class Game {
       }
       for (let i = 0; i < (config.Vampire || 0); i++) {
         pool.push({ role: 'Vampire', align: roleAlignments['Vampire'] });
+      }
+      for (let i = 0; i < (config['Vampire Framer'] || 0); i++) {
+        pool.push({ role: 'Vampire Framer', align: roleAlignments['Vampire Framer'] });
       }
       for (let i = 0; i < (config.Jester || 0); i++) {
         pool.push({ role: 'Jester', align: roleAlignments['Jester'] });
@@ -177,6 +183,8 @@ class Game {
     this.jailedPlayerId = null;
     this.jailorId = null;
     this.jailChat = [];
+    // Reset framed players for new night
+    this.framedPlayers = {};
     this.broadcastUpdate();
     this.startTimer(this.settings.nightTime, () => this.resolveNight());
   }
@@ -214,7 +222,7 @@ class Game {
     let turnedPlayer = null;
     if (canTurn) {
       const vampActions = Object.values(this.nightActions).filter(a => a.type === 'BITE');
-      const aliveVampires = this.players.filter(p => p.role === 'Vampire' && p.alive);
+      const aliveVampires = this.players.filter(p => (p.role === 'Vampire' || p.role === 'Vampire Framer') && p.alive);
 
       if (vampActions.length > 0) {
         // Count votes for each target
@@ -249,7 +257,7 @@ class Game {
 
         if (potentialTargetId) {
           const target = this.players.find(p => p.id === potentialTargetId);
-          if (target && target.alive && target.role !== 'Vampire') {
+          if (target && target.alive && target.role !== 'Vampire' && target.role !== 'Vampire Framer') {
             // Check if target is jailed - jailed players are protected from vampire bites
             const isJailed = this.jailedPlayerId === potentialTargetId;
             const isHealed = doctorHeals.some(h => h.targetId === potentialTargetId);
@@ -283,16 +291,37 @@ class Game {
       }
     }
 
-    // 4. Investigator
+    // 4. Vampire Framer - Process FRAME actions
+    Object.keys(this.nightActions).forEach(actionKey => {
+      const action = this.nightActions[actionKey];
+      if (action.type === 'FRAME') {
+        const actor = this.players.find(p => p.id === action.actorId);
+        if (actor && actor.role === 'Vampire Framer' && actor.alive) {
+          this.framedPlayers[action.targetId] = true;
+          if (actor.socketId) {
+            const target = this.players.find(p => p.id === action.targetId);
+            io.to(actor.socketId).emit('private_message', `🎭 You have framed ${target?.name || 'your target'}. They will appear as a Vampire to investigators tonight.`);
+          }
+        }
+      }
+    });
+
+    // 5. Investigator
     Object.keys(this.nightActions).forEach(actorId => {
       const action = this.nightActions[actorId];
       if (action.type === 'INVESTIGATE') {
         const target = this.players.find(p => p.id === action.targetId);
-        investigationResults[actorId] = target ? `Target is a ${target.role}` : 'Unknown';
+        // Check if target is framed - framed players appear as Vampire
+        const isFramed = this.framedPlayers[action.targetId];
+        if (isFramed) {
+          investigationResults[actorId] = 'Target is a Vampire';
+        } else {
+          investigationResults[actorId] = target ? `Target is a ${target.role}` : 'Unknown';
+        }
       }
     });
 
-    // 5. Lookout
+    // 6. Lookout
     Object.keys(this.nightActions).forEach(actorId => {
       const action = this.nightActions[actorId];
       if (action.type === 'LOOKOUT') {
@@ -506,13 +535,13 @@ class Game {
     };
 
     // Calculate vampire info for night phase
-    const aliveVampires = this.players.filter(p => p.role === 'Vampire' && p.alive);
+    const aliveVampires = this.players.filter(p => (p.role === 'Vampire' || p.role === 'Vampire Framer') && p.alive);
     const vampireCount = aliveVampires.length;
     const canTurn = (this.round % 2 === 0);
 
     // Send personalized state to each player
     this.players.forEach(player => {
-      const isVampire = player.role === 'Vampire';
+      const isVampire = player.role === 'Vampire' || player.role === 'Vampire Framer';
       const playerState = {
         ...baseState,
         // Send heal count to doctor
@@ -526,7 +555,9 @@ class Game {
           role: (this.state === 'GAME_OVER') ? p.role : undefined,
           alignment: (this.state === 'GAME_OVER') ? p.alignment : undefined,
           // Always show vampire status to other vampires (not just during night)
-          isVampire: isVampire ? (p.role === 'Vampire') : undefined,
+          isVampire: isVampire ? (p.role === 'Vampire' || p.role === 'Vampire Framer') : undefined,
+          // Show the actual vampire role to teammates (Vampire or Vampire Framer)
+          vampireRole: isVampire && (p.role === 'Vampire' || p.role === 'Vampire Framer') ? p.role : undefined,
           // Show vampire turning votes to vampires during night
           vampireVotes: (isVampire && this.state === 'NIGHT' && canTurn) ? this.countVampireVotesFor(p.id) : undefined
         })),
@@ -660,7 +691,7 @@ io.on('connection', (socket) => {
       if (action.clear || (action.targetId === null && action.type !== 'EXECUTE')) {
         // Check if we're clearing a BITE action - notify other vampires
         if (action.type === 'BITE' && game.nightActions[player.id]) {
-          const aliveVampires = game.players.filter(p => p.role === 'Vampire' && p.alive);
+          const aliveVampires = game.players.filter(p => (p.role === 'Vampire' || p.role === 'Vampire Framer') && p.alive);
           if (aliveVampires.length > 1) {
             aliveVampires.forEach(vamp => {
               if (vamp.socketId && vamp.id !== player.id) {
@@ -668,6 +699,12 @@ io.on('connection', (socket) => {
               }
             });
           }
+        }
+        // Check if we're clearing a FRAME action - Vampire Framer can have separate FRAME action
+        if (action.type === 'FRAME' && game.nightActions[player.id + '_frame']) {
+          delete game.nightActions[player.id + '_frame'];
+          game.broadcastUpdate();
+          return;
         }
         delete game.nightActions[player.id];
         game.broadcastUpdate();
@@ -677,13 +714,13 @@ io.on('connection', (socket) => {
       // Validate BITE action - vampires can't target other vampires
       if (action.type === 'BITE') {
         const target = game.players.find(p => p.id === action.targetId);
-        if (target && target.role === 'Vampire') {
+        if (target && (target.role === 'Vampire' || target.role === 'Vampire Framer')) {
           socket.emit('private_message', 'Cannot turn a fellow vampire!');
           return;
         }
 
         // Notify all vampires about this vote (only if there are 2+ vampires)
-        const aliveVampires = game.players.filter(p => p.role === 'Vampire' && p.alive);
+        const aliveVampires = game.players.filter(p => (p.role === 'Vampire' || p.role === 'Vampire Framer') && p.alive);
         if (aliveVampires.length > 1 && target) {
           aliveVampires.forEach(vamp => {
             if (vamp.socketId && vamp.id !== player.id) {
@@ -792,6 +829,27 @@ io.on('connection', (socket) => {
         return;
       }
 
+      // Validate FRAME action - only Vampire Framer can frame
+      if (action.type === 'FRAME') {
+        if (player.role !== 'Vampire Framer') return;
+        if (!player.alive) return;
+
+        const target = game.players.find(p => p.id === action.targetId);
+        if (!target || !target.alive) {
+          socket.emit('private_message', 'Invalid target for framing.');
+          return;
+        }
+        if (target.role === 'Vampire' || target.role === 'Vampire Framer') {
+          socket.emit('private_message', 'Cannot frame a fellow vampire!');
+          return;
+        }
+
+        // Store FRAME action with special key so it doesn't conflict with BITE
+        game.nightActions[player.id + '_frame'] = { ...action, actorId: player.id };
+        game.broadcastUpdate();
+        return;
+      }
+
       game.nightActions[player.id] = { ...action, actorId: player.id };
 
       // Broadcast update to show vote counts for vampires
@@ -877,6 +935,7 @@ io.on('connection', (socket) => {
           'Citizen': 'good',
           'Jailor': 'good',
           'Vampire': 'evil',
+          'Vampire Framer': 'evil',
           'Jester': 'neutral'
         };
 
