@@ -2439,3 +2439,49 @@ button:active {
 .npc-edit-modal .button-row button {
   min-width: 100px;
 }
+
+/* Voice Input Button */
+.voice-btn {
+  margin-top: 10px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  user-select: none;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.voice-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.voice-btn:active {
+  transform: translateY(0);
+}
+
+.voice-btn.recording {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  animation: pulse 1s infinite;
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.5);
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 4px 12px rgba(245, 87, 108, 0.5);
+  }
+
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 6px 16px rgba(245, 87, 108, 0.7);
+  }
+}

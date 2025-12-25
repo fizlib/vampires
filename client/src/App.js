@@ -130,6 +130,12 @@ function App() {
   const ttsAudioQueue = useRef([]); // Queue for TTS audio to prevent overlap
   const ttsIsPlaying = useRef(false); // Track if TTS audio is currently playing
 
+  // Voice input (Speech-to-Text) state
+  const [isRecording, setIsRecording] = useState(false);
+  const [sttAvailable, setSTTAvailable] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioStreamRef = useRef(null);
+
   // Settings - also persist these
   const [settings, setSettings] = useState(() => {
     const savedSettings = localStorage.getItem('vampire_settings');
@@ -141,6 +147,7 @@ function App() {
       chatEnabled: true,
       enableAI: false,
       enableTTS: false,
+      enableSTT: false,
       ttsProvider: 'google',
       elevenlabsModel: 'eleven_turbo_v2_5',
       npcNationality: 'english'
@@ -479,8 +486,15 @@ function App() {
     socket.on('tts_audio', handleTTSAudio);
     socket.on('elevenlabs_options', handleElevenlabsOptions);
 
-    // Request ElevenLabs options on mount
+    // STT availability handler
+    const handleSTTAvailable = (available) => {
+      setSTTAvailable(available);
+    };
+    socket.on('stt_available', handleSTTAvailable);
+
+    // Request ElevenLabs options and STT availability on mount
     socket.emit('get_elevenlabs_options');
+    socket.emit('get_stt_available');
 
     // Cleanup: remove only the specific listeners we added
     return () => {
@@ -498,6 +512,7 @@ function App() {
       socket.off('npc_details', handleNPCDetails);
       socket.off('tts_audio', handleTTSAudio);
       socket.off('elevenlabs_options', handleElevenlabsOptions);
+      socket.off('stt_available', handleSTTAvailable);
     };
   }, []); // Empty dependency array - run only once on mount
 
@@ -640,6 +655,51 @@ function App() {
 
   const changePlayerAliveStatus = (targetId, isAlive) => {
     socket.emit('set_player_alive_status', { code, targetId, alive: isAlive });
+  };
+
+  // Voice recording functions
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      const audioChunks = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64Audio = reader.result.split(',')[1];
+          socket.emit('voice_audio_chunk', { code, audioChunk: base64Audio });
+        };
+        reader.readAsDataURL(audioBlob);
+
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error('[Voice] Microphone access denied:', err);
+      alert('Microphone access denied. Please allow microphone permissions in your browser settings.');
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
   };
 
   const logout = () => {
@@ -1104,6 +1164,24 @@ function App() {
                       <option key={model.id} value={model.id}>{model.name}</option>
                     ))}
                   </select>
+                </div>
+              )}
+              {settings.enableAI && (
+                <div className="game-setting-item checkbox-setting">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.enableSTT || false}
+                      disabled={!sttAvailable}
+                      onChange={e => {
+                        const newSettings = { ...settings, enableSTT: e.target.checked };
+                        setSettings(newSettings);
+                        localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                        socket.emit('update_settings', { code, settings: newSettings });
+                      }}
+                    />
+                    🎤 Enable Voice Chat {!sttAvailable && '(Not Available)'}
+                  </label>
                 </div>
               )}
             </div>
@@ -1602,6 +1680,21 @@ function App() {
                 ) : !myPlayer?.alive ? (
                   <div className="chat-disabled">Dead players cannot chat</div>
                 ) : null}
+
+                {/* Voice input button - only during DAY_DISCUSS phase */}
+                {gameState.state === 'DAY_DISCUSS' && myPlayer?.alive && settings.enableSTT && sttAvailable && (
+                  <button
+                    className={`voice-btn ${isRecording ? 'recording' : ''}`}
+                    onMouseDown={startVoiceRecording}
+                    onMouseUp={stopVoiceRecording}
+                    onMouseLeave={() => isRecording && stopVoiceRecording()}
+                    onTouchStart={startVoiceRecording}
+                    onTouchEnd={stopVoiceRecording}
+                    title="Hold to speak"
+                  >
+                    {isRecording ? '🔴 Recording...' : '🎤 Hold to Speak'}
+                  </button>
+                )}
               </div>
             );
           })()}

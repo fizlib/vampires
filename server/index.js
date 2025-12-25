@@ -1,14 +1,21 @@
+require('dotenv').config({ override: true });
+
 const express = require('express');
 const http = require('http');
+const https = require('https');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const AIController = require('./ai');
 const GoogleTTSController = require('./tts');
 const ElevenLabsTTSController = require('./elevenlabs-tts');
+const GoogleSTTController = require('./stt');
 
 // Initialize TTS controllers (singletons) if credentials are available
 const googleTTSController = new GoogleTTSController();
 const elevenLabsTTSController = new ElevenLabsTTSController();
+
+// Initialize STT controller (singleton)
+const googleSTTController = new GoogleSTTController();
 
 // Helper to get the appropriate TTS controller based on settings
 function getTTSController(ttsProvider) {
@@ -25,7 +32,11 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const app = express();
 app.use(cors());
 
+// Create server - use HTTP for now (HTTPS causes certificate issues)
+// The simplest solution is to keep the server on HTTP and handle HTTPS at the client level
 const server = http.createServer(app);
+const protocol = 'http';
+
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
@@ -80,6 +91,9 @@ class Game {
 
     // TTS Controller reference (uses global helper to select provider)
     this.tts = this.settings.enableTTS ? getTTSController(this.settings.ttsProvider) : null;
+
+    // STT Controller reference
+    this.stt = this.settings.enableSTT ? googleSTTController : null;
   }
 
   // Trigger AI Actions
@@ -1452,10 +1466,74 @@ io.on('connection', (socket) => {
       });
     }
   });
+
+  // --- VOICE CHAT (Speech-to-Text) ---
+  socket.on('voice_audio_chunk', async ({ code, audioChunk }) => {
+    const game = games[code];
+    if (!game) return;
+
+    // Only allow during DAY_DISCUSS phase
+    if (game.state !== 'DAY_DISCUSS') return;
+    if (game.settings.chatEnabled === false) return;
+
+    const player = game.players.find(p => p.socketId === socket.id);
+    if (!player || !player.alive) return;
+
+    // Check if STT is enabled and available
+    if (!game.stt || !game.stt.isAvailable()) {
+      socket.emit('error', 'Voice chat is not available');
+      return;
+    }
+
+    try {
+      console.log(`[STT] Processing voice input from ${player.name}...`);
+
+      const transcript = await game.stt.recognizeStream(
+        audioChunk,
+        game.settings.npcNationality || 'english'
+      );
+
+      if (transcript && transcript.trim().length > 0) {
+        const chatMessage = {
+          senderId: player.id,
+          senderName: player.name,
+          message: transcript.substring(0, 300), // Limit message length
+          isVampireChat: false,
+          timestamp: Date.now(),
+          isVoiceMessage: true // Flag to distinguish voice messages
+        };
+
+        game.gameChat.push(chatMessage);
+
+        // Broadcast to all players
+        game.players.forEach(p => {
+          if (p.socketId) {
+            io.to(p.socketId).emit('chat_update', game.gameChat);
+          }
+        });
+
+        // Trigger NPC responses to this voice message
+        game.onNewChatMessage(player.id);
+
+        console.log(`[STT] Voice message from ${player.name}: "${transcript}"`);
+      } else {
+        console.log(`[STT] No transcript received for ${player.name}`);
+        socket.emit('error', 'Could not understand audio. Please try again.');
+      }
+    } catch (err) {
+      console.error('[STT] Error processing voice input:', err);
+      socket.emit('error', 'Failed to process voice input');
+    }
+  });
+
+  // Check if STT is available
+  socket.on('get_stt_available', () => {
+    socket.emit('stt_available', googleSTTController.isAvailable());
+  });
 });
 
 // Listen on 0.0.0.0 to accept connections from all network interfaces
 // This allows other devices on the network to connect via your IP address
 server.listen(3001, '0.0.0.0', () => {
-  console.log('Server running on port 3001 (accessible from all interfaces)');
+  console.log(`Server running on port 3001 using ${protocol.toUpperCase()} (accessible from all interfaces)`);
 });
