@@ -3,6 +3,10 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const AIController = require('./ai');
+const TTSController = require('./tts');
+
+// Initialize TTS controller (singleton) if credentials are available
+const ttsController = new TTSController();
 
 // Load API key from env or use empty string (will fail gracefully if not present)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
@@ -62,6 +66,9 @@ class Game {
     } else {
       this.ai = null;
     }
+
+    // TTS Controller reference (uses global singleton)
+    this.tts = (this.settings.enableTTS && ttsController.isAvailable()) ? ttsController : null;
   }
 
   // Trigger AI Actions
@@ -170,53 +177,22 @@ class Game {
       }
     }
 
-    // Day Discussion (Chat)
+    // Day Discussion (Chat) - NPCs respond to new messages instead of continuous loop
     if (this.state === 'DAY_DISCUSS') {
+      // Initialize the set to track which NPCs have responded since the last non-NPC message
+      this.npcRespondedSinceLastMessage = new Set();
+
+      // Send an initial message from one random NPC to start the conversation
+      if (npcPlayers.length > 0) {
+        const randomNpc = npcPlayers[Math.floor(Math.random() * npcPlayers.length)];
+        setTimeout(async () => {
+          if (this.state !== 'DAY_DISCUSS' || !randomNpc.alive) return;
+          await this.triggerNPCChatResponse(randomNpc);
+        }, Math.random() * 3000 + 2000);
+      }
+
+      // Start intent loop for each NPC to form opinions during discussion
       for (const npc of npcPlayers) {
-        // Define a recursive chat loop function
-        const chatLoop = () => {
-          // Stop if phase changed or npc died
-          if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
-
-          // Random delay between 3-8 seconds (was 5-15)
-          const delay = Math.random() * 5000 + 3000;
-
-          setTimeout(async () => {
-            if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
-
-            try {
-              // Always attempt to chat (removed 60% chance check)
-              // The AI itself can still choose "SILENCE" if it wants to be quiet
-              const message = await this.ai.generateChat(npc, this);
-
-              if (message && message !== 'SILENCE' && this.state === 'DAY_DISCUSS') {
-                const chatMsg = {
-                  senderId: npc.id,
-                  senderName: npc.name,
-                  message: message,
-                  isVampireChat: false,
-                  timestamp: Date.now()
-                };
-                this.gameChat.push(chatMsg);
-                io.to(this.code).emit('chat_update', this.gameChat);
-              }
-            } catch (err) {
-              console.error(`[Game] Error in AI chat loop for ${npc.name}:`, err);
-            } finally {
-              // specific check to prevent infinite loops if something goes wrong instantly, 
-              // though setTimeout handles the delay stack
-              if (this.state === 'DAY_DISCUSS' && npc.alive) {
-                // Continue loop
-                chatLoop();
-              }
-            }
-          }, delay);
-        };
-
-        // Start the chat loop
-        chatLoop();
-
-        // Start intent loop to form opinions during discussion
         const intentLoop = () => {
           if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
           // Delay 10-20 seconds
@@ -237,6 +213,88 @@ class Game {
         intentLoop();
       }
     }
+  }
+
+  // Helper method to trigger a single NPC chat response
+  async triggerNPCChatResponse(npc) {
+    if (!this.ai || this.state !== 'DAY_DISCUSS' || !npc.alive) return;
+
+    try {
+      const message = await this.ai.generateChat(npc, this);
+
+      if (message && message !== 'SILENCE' && this.state === 'DAY_DISCUSS') {
+        const chatMsg = {
+          senderId: npc.id,
+          senderName: npc.name,
+          message: message,
+          isVampireChat: false,
+          timestamp: Date.now()
+        };
+        this.gameChat.push(chatMsg);
+        io.to(this.code).emit('chat_update', this.gameChat);
+
+        // Mark that this NPC has responded since the last non-NPC message
+        if (this.npcRespondedSinceLastMessage) {
+          this.npcRespondedSinceLastMessage.add(npc.id);
+        }
+
+        // Generate TTS audio and send to host only
+        if (this.settings.enableTTS && ttsController.isAvailable()) {
+          console.log(`[Game] TTS enabled, synthesizing for ${npc.name}...`);
+          ttsController.synthesizeSpeech(message, npc.id, this.settings.npcNationality || 'english')
+            .then(audioBase64 => {
+              if (audioBase64) {
+                const hostPlayer = this.players.find(p => p.id === this.host);
+                if (hostPlayer && hostPlayer.socketId) {
+                  io.to(hostPlayer.socketId).emit('tts_audio', {
+                    audio: audioBase64,
+                    senderName: npc.name,
+                    senderId: npc.id
+                  });
+                  console.log(`[Game] Sent TTS audio to host for ${npc.name}`);
+                }
+              }
+            })
+            .catch(err => console.error('[Game] TTS synthesis error:', err));
+        } else if (this.settings.enableTTS) {
+          console.log(`[Game] TTS requested but not available (check GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_TTS_API_KEY)`);
+        }
+      }
+    } catch (err) {
+      console.error(`[Game] Error in AI chat for ${npc.name}:`, err);
+    }
+  }
+
+  // Trigger NPC responses when a new non-NPC message arrives
+  onNewChatMessage(senderId) {
+    if (!this.ai || this.state !== 'DAY_DISCUSS') return;
+
+    const sender = this.players.find(p => p.id === senderId);
+    if (!sender || sender.isNPC) return; // Only trigger on non-NPC messages
+
+    // Reset the responded set since a new non-NPC message arrived
+    this.npcRespondedSinceLastMessage = new Set();
+
+    // Get all alive NPCs
+    const npcPlayers = this.players.filter(p => p.isNPC && p.alive);
+    if (npcPlayers.length === 0) return;
+
+    // Pick 1-2 random NPCs to respond (not all at once to avoid spam)
+    const numResponders = Math.min(npcPlayers.length, Math.ceil(Math.random() * 2));
+    const shuffled = npcPlayers.sort(() => Math.random() - 0.5);
+    const respondingNpcs = shuffled.slice(0, numResponders);
+
+    // Trigger responses with staggered delays
+    respondingNpcs.forEach((npc, index) => {
+      const delay = (index + 1) * (Math.random() * 2000 + 1500); // 1.5-3.5s staggered delay
+      setTimeout(async () => {
+        if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
+        // Only respond if this NPC hasn't already responded since the last non-NPC message
+        if (!this.npcRespondedSinceLastMessage.has(npc.id)) {
+          await this.triggerNPCChatResponse(npc);
+        }
+      }, delay);
+    });
   }
 
   addPlayer(id, name, socketId) {
@@ -1344,6 +1402,9 @@ io.on('connection', (socket) => {
     };
 
     game.gameChat.push(chatMessage);
+
+    // Trigger NPC responses to this message (during day discussion)
+    game.onNewChatMessage(player.id);
 
     // Day: broadcast to all players. Night: only to vampires
     if (isDayPhase) {

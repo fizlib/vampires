@@ -126,6 +126,8 @@ function App() {
   const prevGameState = useRef(null); // Track previous game state for transitions
   const chatMessagesRef = useRef(null); // Ref for auto-scrolling chat
   const jailChatMessagesRef = useRef(null); // Ref for auto-scrolling jail chat
+  const ttsAudioQueue = useRef([]); // Queue for TTS audio to prevent overlap
+  const ttsIsPlaying = useRef(false); // Track if TTS audio is currently playing
 
   // Settings - also persist these
   const [settings, setSettings] = useState(() => {
@@ -137,6 +139,7 @@ function App() {
       revealRole: true,
       chatEnabled: true,
       enableAI: false,
+      enableTTS: false,
       npcNationality: 'english'
     };
     if (savedSettings) {
@@ -399,6 +402,61 @@ function App() {
       setEditingNPC(data);
     };
 
+    // TTS Audio handler with queue for sequential playback
+    const handleTTSAudio = ({ audio, senderName, senderId }) => {
+      console.log(`[TTS] Received audio for ${senderName}`);
+
+      // Add to queue
+      ttsAudioQueue.current.push({ audio, senderName, senderId });
+
+      // Process queue if not already playing
+      const processQueue = () => {
+        if (ttsIsPlaying.current || ttsAudioQueue.current.length === 0) return;
+
+        ttsIsPlaying.current = true;
+        const { audio } = ttsAudioQueue.current.shift();
+
+        try {
+          // Decode base64 to binary
+          const binaryString = atob(audio);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+
+          // Create blob and audio element
+          const audioBlob = new Blob([bytes], { type: 'audio/mp3' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audioElement = new Audio(audioUrl);
+
+          audioElement.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+            ttsIsPlaying.current = false;
+            processQueue(); // Play next in queue
+          };
+
+          audioElement.onerror = (err) => {
+            console.error('[TTS] Audio playback error:', err);
+            URL.revokeObjectURL(audioUrl);
+            ttsIsPlaying.current = false;
+            processQueue(); // Try next in queue
+          };
+
+          audioElement.play().catch(err => {
+            console.error('[TTS] Failed to play audio:', err);
+            ttsIsPlaying.current = false;
+            processQueue();
+          });
+        } catch (err) {
+          console.error('[TTS] Error processing audio:', err);
+          ttsIsPlaying.current = false;
+          processQueue();
+        }
+      };
+
+      processQueue();
+    };
+
     socket.on('game_created', handleGameCreated);
     socket.on('joined', handleJoined);
     socket.on('game_update', handleGameUpdate);
@@ -411,6 +469,7 @@ function App() {
     socket.on('jail_chat_update', handleJailChatUpdate);
     socket.on('chat_update', handleChatUpdate);
     socket.on('npc_details', handleNPCDetails);
+    socket.on('tts_audio', handleTTSAudio);
 
     // Cleanup: remove only the specific listeners we added
     return () => {
@@ -426,6 +485,7 @@ function App() {
       socket.off('jail_chat_update', handleJailChatUpdate);
       socket.off('chat_update', handleChatUpdate);
       socket.off('npc_details', handleNPCDetails);
+      socket.off('tts_audio', handleTTSAudio);
     };
   }, []); // Empty dependency array - run only once on mount
 
@@ -963,6 +1023,23 @@ function App() {
                     <option value="english">English</option>
                     <option value="lithuanian">Lithuanian</option>
                   </select>
+                </div>
+              )}
+              {settings.enableAI && (
+                <div className="game-setting-item checkbox-setting">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.enableTTS || false}
+                      onChange={e => {
+                        const newSettings = { ...settings, enableTTS: e.target.checked };
+                        setSettings(newSettings);
+                        localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                        socket.emit('update_settings', { code, settings: newSettings });
+                      }}
+                    />
+                    🔊 NPC Text-to-Speech
+                  </label>
                 </div>
               )}
             </div>
