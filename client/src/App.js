@@ -133,8 +133,14 @@ function App() {
   // Voice input (Speech-to-Text) state
   const [isRecording, setIsRecording] = useState(false);
   const [sttAvailable, setSTTAvailable] = useState(false);
+  const [isListening, setIsListening] = useState(false); // For VAD mode
+  const [audioLevel, setAudioLevel] = useState(0); // For VAD visual indicator
   const mediaRecorderRef = useRef(null);
   const audioStreamRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const vadTimeoutRef = useRef(null);
+  const silenceTimeoutRef = useRef(null);
 
   // Settings - also persist these
   const [settings, setSettings] = useState(() => {
@@ -148,6 +154,7 @@ function App() {
       enableAI: false,
       enableTTS: false,
       enableSTT: false,
+      voiceInputMode: 'push-to-talk',
       ttsProvider: 'google',
       elevenlabsModel: 'eleven_turbo_v2_5',
       npcNationality: 'english'
@@ -702,6 +709,125 @@ function App() {
     }
   };
 
+  // Voice Activity Detection (VAD) functions
+  const startVADListening = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+
+      // Set up audio analysis for VAD
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioContextRef.current = audioContext;
+      const analyser = audioContext.createAnalyser();
+      analyserRef.current = analyser;
+      analyser.fftSize = 256;
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let isCurrentlyRecording = false;
+      let audioChunks = [];
+      let mediaRecorder = null;
+
+      const SILENCE_THRESHOLD = 15; // Audio level threshold
+      const SILENCE_DURATION = 1500; // ms of silence before stopping recording
+      const MIN_RECORDING_DURATION = 500; // Minimum recording duration in ms
+
+      const checkAudioLevel = () => {
+        if (!analyserRef.current) return;
+
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        setAudioLevel(Math.min(100, average * 2)); // Scale for visual indicator
+
+        if (average > SILENCE_THRESHOLD) {
+          // Voice detected
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+          }
+
+          if (!isCurrentlyRecording) {
+            // Start recording
+            isCurrentlyRecording = true;
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+
+            mediaRecorder.ondataavailable = (event) => {
+              if (event.data.size > 0) {
+                audioChunks.push(event.data);
+              }
+            };
+
+            mediaRecorder.onstop = () => {
+              if (audioChunks.length > 0) {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const base64Audio = reader.result.split(',')[1];
+                  socket.emit('voice_audio_chunk', { code, audioChunk: base64Audio });
+                };
+                reader.readAsDataURL(audioBlob);
+              }
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+          }
+        } else if (isCurrentlyRecording && !silenceTimeoutRef.current) {
+          // Silence detected while recording, start countdown
+          silenceTimeoutRef.current = setTimeout(() => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+              mediaRecorder.stop();
+              isCurrentlyRecording = false;
+              setIsRecording(false);
+            }
+            silenceTimeoutRef.current = null;
+          }, SILENCE_DURATION);
+        }
+
+        vadTimeoutRef.current = requestAnimationFrame(checkAudioLevel);
+      };
+
+      setIsListening(true);
+      checkAudioLevel();
+    } catch (err) {
+      console.error('[Voice VAD] Microphone access denied:', err);
+      alert('Microphone access denied. Please allow microphone permissions in your browser settings.');
+    }
+  };
+
+  const stopVADListening = () => {
+    setIsListening(false);
+    setAudioLevel(0);
+
+    if (vadTimeoutRef.current) {
+      cancelAnimationFrame(vadTimeoutRef.current);
+      vadTimeoutRef.current = null;
+    }
+
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop());
+      audioStreamRef.current = null;
+    }
+  };
+
   const logout = () => {
     clearSession();
     window.location.reload();
@@ -1182,6 +1308,24 @@ function App() {
                     />
                     🎤 Enable Voice Chat {!sttAvailable && '(Not Available)'}
                   </label>
+                </div>
+              )}
+              {settings.enableAI && settings.enableSTT && sttAvailable && (
+                <div className="game-setting-item">
+                  <label>Voice Input Mode:</label>
+                  <select
+                    className="setting-select"
+                    value={settings.voiceInputMode || 'push-to-talk'}
+                    onChange={e => {
+                      const newSettings = { ...settings, voiceInputMode: e.target.value };
+                      setSettings(newSettings);
+                      localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                      socket.emit('update_settings', { code, settings: newSettings });
+                    }}
+                  >
+                    <option value="push-to-talk">Push to Talk</option>
+                    <option value="voice-activity">Voice Activity Detection</option>
+                  </select>
                 </div>
               )}
             </div>
@@ -1683,17 +1827,34 @@ function App() {
 
                 {/* Voice input button - only during DAY_DISCUSS phase */}
                 {gameState.state === 'DAY_DISCUSS' && myPlayer?.alive && settings.enableSTT && sttAvailable && (
-                  <button
-                    className={`voice-btn ${isRecording ? 'recording' : ''}`}
-                    onMouseDown={startVoiceRecording}
-                    onMouseUp={stopVoiceRecording}
-                    onMouseLeave={() => isRecording && stopVoiceRecording()}
-                    onTouchStart={startVoiceRecording}
-                    onTouchEnd={stopVoiceRecording}
-                    title="Hold to speak"
-                  >
-                    {isRecording ? '🔴 Recording...' : '🎤 Hold to Speak'}
-                  </button>
+                  settings.voiceInputMode === 'voice-activity' ? (
+                    <div className="voice-vad-container">
+                      <button
+                        className={`voice-btn vad-btn ${isListening ? 'listening' : ''} ${isRecording ? 'recording' : ''}`}
+                        onClick={() => isListening ? stopVADListening() : startVADListening()}
+                        title={isListening ? 'Click to stop listening' : 'Click to start listening'}
+                      >
+                        {isListening ? (isRecording ? '🔴 Speaking...' : '🎤 Listening...') : '🎤 Start Listening'}
+                      </button>
+                      {isListening && (
+                        <div className="audio-level-bar">
+                          <div className="audio-level-fill" style={{ width: `${audioLevel}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      className={`voice-btn ${isRecording ? 'recording' : ''}`}
+                      onMouseDown={startVoiceRecording}
+                      onMouseUp={stopVoiceRecording}
+                      onMouseLeave={() => isRecording && stopVoiceRecording()}
+                      onTouchStart={startVoiceRecording}
+                      onTouchEnd={stopVoiceRecording}
+                      title="Hold to speak"
+                    >
+                      {isRecording ? '🔴 Recording...' : '🎤 Hold to Speak'}
+                    </button>
+                  )
                 )}
               </div>
             );

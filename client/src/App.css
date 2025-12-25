@@ -2485,3 +2485,45 @@ button:active {
     box-shadow: 0 6px 16px rgba(245, 87, 108, 0.7);
   }
 }
+
+/* Voice Activity Detection (VAD) Mode Styles */
+.voice-vad-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.voice-btn.vad-btn {
+  margin-top: 0;
+}
+
+.voice-btn.vad-btn.listening {
+  background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+  box-shadow: 0 2px 8px rgba(0, 184, 148, 0.4);
+}
+
+.voice-btn.vad-btn.listening:hover {
+  box-shadow: 0 4px 12px rgba(0, 184, 148, 0.5);
+}
+
+.voice-btn.vad-btn.listening.recording {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  animation: pulse 1s infinite;
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.5);
+}
+
+.audio-level-bar {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--input-border);
+}
+
+.audio-level-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00b894, #00cec9, #74b9ff);
+  border-radius: 4px;
+  transition: width 0.05s ease-out;
+}

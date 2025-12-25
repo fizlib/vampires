@@ -1539,7 +1539,7 @@ io.on('connection', (socket) => {
         console.log(`[STT] Voice message from ${player.name}: "${transcript}"`);
       } else {
         console.log(`[STT] No transcript received for ${player.name}`);
-        socket.emit('error', 'Could not understand audio. Please try again.');
+        // Silently fail - don't show an alert to the user
       }
     } catch (err) {
       console.error('[STT] Error processing voice input:', err);
