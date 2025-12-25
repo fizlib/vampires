@@ -12,15 +12,30 @@ class GoogleSTTController {
 
     initialize() {
         try {
-            // Try to initialize the Google Cloud Speech client
-            // It will use GOOGLE_APPLICATION_CREDENTIALS environment variable
-            // or default credentials if available
-            this.client = new speech.SpeechClient();
-            this.available = true;
-            console.log('[STT] Google Cloud Speech-to-Text initialized successfully');
+            // Check for credentials priority:
+            // 1. GOOGLE_APPLICATION_CREDENTIALS (Service Account file) - Best for server-side
+            // 2. GOOGLE_STT_API_KEY (Specific API Key)
+            // 3. GEMINI_API_KEY (Shared API Key)
+
+            if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+                this.client = new speech.SpeechClient();
+                this.available = true;
+                console.log('[STT] Google Cloud Speech-to-Text initialized successfully (using key file)');
+            } else if (process.env.GOOGLE_STT_API_KEY || process.env.GEMINI_API_KEY) {
+                // Fallback to API Key
+                const apiKey = process.env.GOOGLE_STT_API_KEY || process.env.GEMINI_API_KEY;
+                this.client = new speech.SpeechClient({
+                    apiKey: apiKey
+                });
+                this.available = true;
+                console.log('[STT] Google Cloud Speech-to-Text initialized successfully (using API key)');
+            } else {
+                console.log('[STT] No Google Cloud credentials found (GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_STT_API_KEY, or GEMINI_API_KEY). STT disabled.');
+                this.available = false;
+            }
         } catch (error) {
             console.log('[STT] Google Cloud Speech-to-Text not available:', error.message);
-            console.log('[STT] Set GOOGLE_APPLICATION_CREDENTIALS environment variable to enable voice chat');
+            console.log('[STT] Set GOOGLE_APPLICATION_CREDENTIALS or GEMINI_API_KEY environment variable to enable voice chat');
             this.available = false;
         }
     }

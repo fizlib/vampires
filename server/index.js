@@ -984,10 +984,31 @@ io.on('connection', (socket) => {
       // Re-initialize AI controller if enableAI or npcNationality setting changed
       if (settings.enableAI !== undefined || settings.npcNationality !== undefined) {
         if ((settings.enableAI ?? game.settings.enableAI) && GEMINI_API_KEY) {
-          const AIController = require('./ai');
           game.ai = new AIController(GEMINI_API_KEY, game.settings.npcNationality || 'english');
         } else if (settings.enableAI === false) {
           game.ai = null;
+        }
+      }
+
+      // Re-initialize TTS controller if enableTTS or ttsProvider changed
+      if (settings.enableTTS !== undefined || settings.ttsProvider !== undefined) {
+        const shouldUseTTS = settings.enableTTS ?? game.settings.enableTTS;
+        const provider = settings.ttsProvider || game.settings.ttsProvider;
+
+        if (shouldUseTTS) {
+          game.tts = getTTSController(provider);
+        } else {
+          game.tts = null;
+        }
+      }
+
+      // Re-initialize STT controller if enableSTT changed
+      if (settings.enableSTT !== undefined) {
+        const shouldUseSTT = settings.enableSTT;
+        if (shouldUseSTT) {
+          game.stt = googleSTTController;
+        } else {
+          game.stt = null;
         }
       }
 
