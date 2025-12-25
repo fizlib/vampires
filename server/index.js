@@ -2,6 +2,10 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const AIController = require('./ai');
+
+// Load API key from env or use empty string (will fail gracefully if not present)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 const app = express();
 app.use(cors());
@@ -50,6 +54,145 @@ class Game {
     this.framedPlayers = {};
     // Game chat state
     this.gameChat = [];
+
+    // AI Controller
+    if (this.settings.enableAI && GEMINI_API_KEY) {
+      this.ai = new AIController(GEMINI_API_KEY);
+    } else {
+      this.ai = null;
+    }
+  }
+
+  // Trigger AI Actions
+  async triggerAIActions() {
+    if (!this.ai) {
+      console.log("[Game] AI not enabled or not initialized.");
+      return;
+    }
+
+    const npcPlayers = this.players.filter(p => p.isNPC && p.alive);
+    console.log(`[Game] Triggering AI Actions for ${npcPlayers.length} NPCs in phase ${this.state}`);
+
+    if (npcPlayers.length === 0) return;
+
+    // Night Actions
+    if (this.state === 'NIGHT') {
+      for (const npc of npcPlayers) {
+        // Random delay to simulate thinking
+        setTimeout(async () => {
+          if (!npc.alive) return;
+          const decision = await this.ai.generateNightAction(npc, this);
+          if (decision.action !== 'NONE') {
+            // Find target ID by name
+            const target = this.players.find(p => p.name === decision.targetName);
+            const targetId = target ? target.id : null;
+
+            // Additional logic for specific actions like EXECUTE taking no targetId or null
+            const actionPayload = {
+              targetId: targetId,
+              type: decision.action
+            };
+
+            // Mock socket for internal action handling
+            const mockSocket = {
+              id: null,
+              emit: () => { }
+            };
+
+            // We need to simulate the action. Since 'night_action' handler expects a socket and looks up player by socketId,
+            // we might need a direct method on Game to handle actions or refactor 'night_action' to take playerId.
+            // Refactoring is cleaner. For now, let's just write directly to this.nightActions if valid.
+
+            if (decision.action === 'BITE' && targetId) {
+              // Check valid target
+              if (target.role !== 'Vampire' && target.role !== 'Vampire Framer') {
+                this.nightActions[npc.id] = actionPayload;
+              }
+            } else if (targetId || decision.action === 'EXECUTE') {
+              this.nightActions[npc.id] = actionPayload;
+            }
+          }
+        }, Math.random() * 5000 + 2000); // 2-7 seconds delay
+      }
+    }
+
+    // Day Voting
+    if (this.state === 'DAY_VOTE') {
+      for (const npc of npcPlayers) {
+        setTimeout(async () => {
+          if (!npc.alive) return;
+          const decision = await this.ai.generateDayVote(npc, this);
+          if (decision.vote) {
+            // Flexible matching
+            let target = this.players.find(p => p.name === decision.vote);
+
+            if (!target) {
+              // Try partial match: if vote string is part of player name or vice versa
+              // useful for "[NPC] Name" matching "Name"
+              target = this.players.find(p => p.name.includes(decision.vote) || decision.vote.includes(p.name));
+            }
+
+            if (target && target.alive) {
+              this.votes[npc.id] = target.id;
+              console.log(`[Game] NPC ${npc.name} voted for ${target.name} (matched from '${decision.vote}')`);
+              this.broadcastUpdate();
+            } else {
+              console.log(`[Game] NPC ${npc.name} tried to vote for '${decision.vote}' but target invalid/dead. Available: ${this.players.map(p => p.name).join(', ')}`);
+            }
+          } else {
+            console.log(`[Game] NPC ${npc.name} abstained from voting.`);
+          }
+        }, Math.random() * 5000 + 2000);
+      }
+    }
+
+    // Day Discussion (Chat)
+    if (this.state === 'DAY_DISCUSS') {
+      for (const npc of npcPlayers) {
+        // Define a recursive chat loop function
+        const chatLoop = () => {
+          // Stop if phase changed or npc died
+          if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
+
+          // Random delay between 3-8 seconds (was 5-15)
+          const delay = Math.random() * 5000 + 3000;
+
+          setTimeout(async () => {
+            if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
+
+            try {
+              // Always attempt to chat (removed 60% chance check)
+              // The AI itself can still choose "SILENCE" if it wants to be quiet
+              const message = await this.ai.generateChat(npc, this);
+
+              if (message && message !== 'SILENCE' && this.state === 'DAY_DISCUSS') {
+                const chatMsg = {
+                  senderId: npc.id,
+                  senderName: npc.name,
+                  message: message,
+                  isVampireChat: false,
+                  timestamp: Date.now()
+                };
+                this.gameChat.push(chatMsg);
+                io.to(this.code).emit('chat_update', this.gameChat);
+              }
+            } catch (err) {
+              console.error(`[Game] Error in AI chat loop for ${npc.name}:`, err);
+            } finally {
+              // specific check to prevent infinite loops if something goes wrong instantly, 
+              // though setTimeout handles the delay stack
+              if (this.state === 'DAY_DISCUSS' && npc.alive) {
+                // Continue loop
+                chatLoop();
+              }
+            }
+          }, delay);
+        };
+
+        // Start the loop
+        chatLoop();
+      }
+    }
   }
 
   addPlayer(id, name, socketId) {
@@ -191,6 +334,7 @@ class Game {
     this.gameChat = [];
     this.broadcastUpdate();
     this.startTimer(this.settings.nightTime, () => this.resolveNight());
+    this.triggerAIActions(); // Trigger AI for night
   }
 
   resolveNight() {
@@ -421,6 +565,7 @@ class Game {
 
     this.broadcastUpdate();
     this.startTimer(this.settings.discussionTime, () => this.startDayVote());
+    this.triggerAIActions(); // Trigger AI for discussion
   }
 
   startDayVote() {
@@ -428,6 +573,7 @@ class Game {
     this.votes = {};
     this.broadcastUpdate();
     this.startTimer(15, () => this.resolveVoting());
+    this.triggerAIActions(); // Trigger AI for voting
   }
 
   resolveVoting() {

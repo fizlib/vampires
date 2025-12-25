@@ -133,7 +133,9 @@ function App() {
       discussionTime: 120,
       nightTime: 60,
       revealRole: true,
-      chatEnabled: true
+      revealRole: true,
+      chatEnabled: true,
+      enableAI: false
     };
   });
 
@@ -600,6 +602,20 @@ function App() {
                   }}
                 />
                 Enable Chat
+              </label>
+            </div>
+            <div className="setting-row checkbox-row">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={settings.enableAI || false}
+                  onChange={e => {
+                    const newSettings = { ...settings, enableAI: e.target.checked };
+                    setSettings(newSettings);
+                    localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                  }}
+                />
+                Enable AI NPCs
               </label>
             </div>
             <button className="btn-primary" onClick={initiateCreateGame}>Create Game</button>
