@@ -854,7 +854,7 @@ function App() {
         </div>
       )}
 
-      {!amIAlive && <div className="banner-dead">YOU ARE DEAD</div>}
+      {amIAlive === false && <div className="banner-dead">YOU ARE DEAD</div>}
 
       {/* Vampire voting info panel */}
       {myRole?.role === 'Vampire' && isNight && canTurn && gameState?.vampireInfo?.needsVoting && (
