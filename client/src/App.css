@@ -2084,3 +2084,166 @@ button:active {
   background: linear-gradient(45deg, #ffd700, #daa520);
   color: #1a1a2e;
 }
+
+/* ====== Game Chat Panel Styles ====== */
+.chat-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  max-height: 250px;
+}
+
+.chat-panel h4 {
+  margin: 0 0 10px 0;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.chat-panel.vampire-chat {
+  border-color: rgba(183, 28, 28, 0.5);
+  background: linear-gradient(135deg, var(--panel-bg), rgba(139, 0, 0, 0.15));
+}
+
+.chat-panel.vampire-chat h4 {
+  color: #ff6b6b;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  min-height: 100px;
+  max-height: 150px;
+}
+
+.chat-message {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--card-bg);
+  max-width: 90%;
+  font-size: 0.85rem;
+  word-break: break-word;
+}
+
+.chat-message.own-message {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+}
+
+.chat-message .chat-sender {
+  font-weight: bold;
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+.chat-message.own-message .chat-sender {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.chat-message .chat-text {
+  color: var(--text);
+}
+
+.chat-message.own-message .chat-text {
+  color: white;
+}
+
+.chat-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 30px 10px;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.chat-input-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.chat-input:focus {
+  outline: 2px solid var(--secondary);
+  border-color: var(--secondary);
+}
+
+.chat-input::placeholder {
+  color: var(--muted);
+}
+
+.btn-send {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.85rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-send:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(88, 27, 152, 0.4);
+}
+
+.chat-panel.vampire-chat .btn-send {
+  background: linear-gradient(135deg, #8b0000, #b71c1c);
+}
+
+.chat-panel.vampire-chat .btn-send:hover {
+  box-shadow: 0 4px 12px rgba(183, 28, 28, 0.5);
+}
+
+.chat-disabled {
+  text-align: center;
+  padding: 10px;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.85rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+/* Checkbox row in settings */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--secondary);
+  cursor: pointer;
+}

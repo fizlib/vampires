@@ -120,7 +120,11 @@ function App() {
   const [jailChatInput, setJailChatInput] = useState(''); // Jail chat input
   const [jailChat, setJailChat] = useState([]); // Jail chat messages
   const [executionPending, setExecutionPending] = useState(false); // Track if Jailor decided to execute
+  const [gameChat, setGameChat] = useState([]); // Game chat messages
+  const [chatInput, setChatInput] = useState(''); // Game chat input
   const prevGameState = useRef(null); // Track previous game state for transitions
+  const chatMessagesRef = useRef(null); // Ref for auto-scrolling chat
+  const jailChatMessagesRef = useRef(null); // Ref for auto-scrolling jail chat
 
   // Settings - also persist these
   const [settings, setSettings] = useState(() => {
@@ -128,7 +132,8 @@ function App() {
     return savedSettings ? JSON.parse(savedSettings) : {
       discussionTime: 120,
       nightTime: 60,
-      revealRole: true
+      revealRole: true,
+      chatEnabled: true
     };
   });
 
@@ -224,6 +229,15 @@ function App() {
     if (gameState.state === 'DAY_VOTE' && prev?.state !== 'DAY_VOTE') {
       setVoteTarget(null);
     }
+    // Reset game chat when entering DAY_DISCUSS (cleared by server)
+    if (gameState.state === 'DAY_DISCUSS' && prev?.state !== 'DAY_DISCUSS') {
+      setGameChat(gameState.gameChat || []);
+    }
+
+    // Sync game chat from gameState
+    if (gameState.gameChat && JSON.stringify(gameState.gameChat) !== JSON.stringify(gameChat)) {
+      setGameChat(gameState.gameChat);
+    }
 
     // Sync jail chat from gameState when we first enter jail (jailInfo appears)
     if (gameState.jailInfo && (!prev?.jailInfo) && gameState.jailInfo.jailChat) {
@@ -232,6 +246,20 @@ function App() {
 
     prevGameState.current = gameState;
   }, [gameState]);
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [gameChat]);
+
+  // Auto-scroll jail chat to bottom when new messages arrive
+  useEffect(() => {
+    if (jailChatMessagesRef.current) {
+      jailChatMessagesRef.current.scrollTop = jailChatMessagesRef.current.scrollHeight;
+    }
+  }, [jailChat]);
 
   // 1.5 Theme switching based on game phase and user selection
   useEffect(() => {
@@ -355,6 +383,10 @@ function App() {
       setJailChat(chatMessages);
     };
 
+    const handleChatUpdate = (chatMessages) => {
+      setGameChat(chatMessages);
+    };
+
     socket.on('game_created', handleGameCreated);
     socket.on('joined', handleJoined);
     socket.on('game_update', handleGameUpdate);
@@ -365,6 +397,7 @@ function App() {
     socket.on('error', handleError);
     socket.on('player_role_info', handlePlayerRoleInfo);
     socket.on('jail_chat_update', handleJailChatUpdate);
+    socket.on('chat_update', handleChatUpdate);
 
     // Cleanup: remove only the specific listeners we added
     return () => {
@@ -378,6 +411,7 @@ function App() {
       socket.off('error', handleError);
       socket.off('player_role_info', handlePlayerRoleInfo);
       socket.off('jail_chat_update', handleJailChatUpdate);
+      socket.off('chat_update', handleChatUpdate);
     };
   }, []); // Empty dependency array - run only once on mount
 
@@ -553,6 +587,20 @@ function App() {
                 setSettings(newSettings);
                 localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
               }} />
+            </div>
+            <div className="setting-row checkbox-row">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={settings.chatEnabled !== false}
+                  onChange={e => {
+                    const newSettings = { ...settings, chatEnabled: e.target.checked };
+                    setSettings(newSettings);
+                    localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                  }}
+                />
+                Enable Chat
+              </label>
             </div>
             <button className="btn-primary" onClick={initiateCreateGame}>Create Game</button>
           </div>
@@ -936,7 +984,7 @@ function App() {
               <p className="jail-subtitle">The Jailor wishes to speak with you. You cannot perform your night action.</p>
             )}
 
-            <div className="jail-chat-messages">
+            <div className="jail-chat-messages" ref={jailChatMessagesRef}>
               {(jailChat.length > 0 ? jailChat : (gameState.jailInfo.jailChat || [])).map((msg, i) => (
                 <div key={i} className={`jail-chat-message ${msg.sender === 'Jailor' ? 'jailor-msg' : 'prisoner-msg'}`}>
                   <span className="chat-sender">{msg.sender}:</span>
@@ -1187,6 +1235,65 @@ function App() {
         </div>
 
         <div className="sidebar">
+          {/* Chat Panel - only show if chat is enabled and (day phase OR vampire at night) */}
+          {gameState?.chatEnabled && (() => {
+            const isNight = gameState?.state === 'NIGHT';
+            const isDayPhase = gameState?.state === 'DAY_DISCUSS' || gameState?.state === 'DAY_VOTE';
+            const myPlayer = gameState?.players.find(p => p.id === myId);
+            const amIVampire = myRole?.role === 'Vampire' || myRole?.role === 'Vampire Framer';
+            const canChat = myPlayer?.alive && (isDayPhase || (isNight && amIVampire));
+
+            // Hide chat panel completely for non-vampires at night
+            if (isNight && !amIVampire) return null;
+
+            return (
+              <div className={`panel chat-panel ${isNight ? 'vampire-chat' : ''}`}>
+                <h4>{isNight ? '🧛 Vampire Chat' : '💬 Chat'}</h4>
+                <div className="chat-messages" ref={chatMessagesRef}>
+                  {gameChat.length > 0 ? (
+                    gameChat.map((msg, i) => (
+                      <div key={i} className={`chat-message ${msg.senderId === myId ? 'own-message' : ''}`}>
+                        <span className="chat-sender">{msg.senderName}:</span>
+                        <span className="chat-text">{msg.message}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="chat-empty">No messages yet...</div>
+                  )}
+                </div>
+                {canChat ? (
+                  <div className="chat-input-container">
+                    <input
+                      type="text"
+                      className="chat-input"
+                      placeholder={isNight ? 'Message fellow vampires...' : 'Type a message...'}
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyPress={e => {
+                        if (e.key === 'Enter' && chatInput.trim()) {
+                          socket.emit('chat_message', { code: gameState.code, message: chatInput.trim() });
+                          setChatInput('');
+                        }
+                      }}
+                    />
+                    <button
+                      className="btn-send"
+                      onClick={() => {
+                        if (chatInput.trim()) {
+                          socket.emit('chat_message', { code: gameState.code, message: chatInput.trim() });
+                          setChatInput('');
+                        }
+                      }}
+                    >
+                      Send
+                    </button>
+                  </div>
+                ) : !myPlayer?.alive ? (
+                  <div className="chat-disabled">Dead players cannot chat</div>
+                ) : null}
+              </div>
+            );
+          })()}
           <div className="panel logs-panel">
             <h4>Game Logs</h4>
             <div className="scroll-box">

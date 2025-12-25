@@ -48,6 +48,8 @@ class Game {
     this.jailChat = [];
     // Vampire Framer state
     this.framedPlayers = {};
+    // Game chat state
+    this.gameChat = [];
   }
 
   addPlayer(id, name, socketId) {
@@ -185,6 +187,8 @@ class Game {
     this.jailChat = [];
     // Reset framed players for new night
     this.framedPlayers = {};
+    // Clear game chat for new night (vampire chat starts fresh)
+    this.gameChat = [];
     this.broadcastUpdate();
     this.startTimer(this.settings.nightTime, () => this.resolveNight());
   }
@@ -412,6 +416,9 @@ class Game {
     this.jailorId = null;
     this.jailChat = [];
 
+    // Clear game chat for new day
+    this.gameChat = [];
+
     this.broadcastUpdate();
     this.startTimer(this.settings.discussionTime, () => this.startDayVote());
   }
@@ -531,7 +538,9 @@ class Game {
       round: this.round,
       timer: this.timer,
       winner: this.winner,
-      logs: this.logs
+      logs: this.logs,
+      chatEnabled: this.settings.chatEnabled !== false,
+      gameChat: this.gameChat
     };
 
     // Calculate vampire info for night phase
@@ -1044,6 +1053,51 @@ io.on('connection', (socket) => {
     }
     if (prisoner && prisoner.socketId) {
       io.to(prisoner.socketId).emit('jail_chat_update', game.jailChat);
+    }
+  });
+
+  // --- GAME CHAT ---
+  socket.on('chat_message', ({ code, message }) => {
+    const game = games[code];
+    if (!game) return;
+    if (game.state === 'LOBBY' || game.state === 'GAME_OVER') return;
+    if (game.settings.chatEnabled === false) return;
+
+    const player = game.players.find(p => p.socketId === socket.id);
+    if (!player || !player.alive) return;
+
+    const isVampire = player.role === 'Vampire' || player.role === 'Vampire Framer';
+    const isDayPhase = game.state === 'DAY_DISCUSS' || game.state === 'DAY_VOTE';
+    const isNightPhase = game.state === 'NIGHT';
+
+    // Night: only vampires can chat
+    if (isNightPhase && !isVampire) return;
+
+    const chatMessage = {
+      senderId: player.id,
+      senderName: player.name,
+      message: message.substring(0, 300), // Limit message length
+      isVampireChat: isNightPhase && isVampire,
+      timestamp: Date.now()
+    };
+
+    game.gameChat.push(chatMessage);
+
+    // Day: broadcast to all players. Night: only to vampires
+    if (isDayPhase) {
+      game.players.forEach(p => {
+        if (p.socketId) {
+          io.to(p.socketId).emit('chat_update', game.gameChat);
+        }
+      });
+    } else if (isNightPhase) {
+      // Send to all vampires
+      game.players.forEach(p => {
+        const pIsVampire = p.role === 'Vampire' || p.role === 'Vampire Framer';
+        if (pIsVampire && p.socketId) {
+          io.to(p.socketId).emit('chat_update', game.gameChat);
+        }
+      });
     }
   });
 });
