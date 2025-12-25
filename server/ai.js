@@ -95,15 +95,56 @@ class AIController {
         }
     }
 
+    async generateNPCProfile(existingNames = []) {
+        console.log("[AI] Generating NPC Profile...");
+        const forbiddenNames = existingNames.map(n => n.replace('[NPC] ', '').trim()).join(", ");
+
+        const prompt = `Generate a unique profile for a player in a social deduction game (like Mafia/Werewolf).
+        
+        Existing names you MUST NOT USE: ${forbiddenNames}
+        
+        Respond with a JSON object: 
+        { 
+            "name": "A unique realistic first name only (can be English or Lithuanian). Must NOT be in the excluded list.", 
+            "personality": "A brief description of their personality (e.g., paranoid, aggressive, analytical, quiet)",
+            "talkingStyle": "A brief description of how they talk (e.g., uses lots of slang, formal, stutters, shouts, speaks in riddles)"
+        }
+        Do not include markdown formatting, just raw JSON.`;
+
+        try {
+            const result = await this.model.generateContent(prompt);
+            const text = result.response.text();
+            const profile = this.parseJSON(text);
+            console.log("[AI] Generated Profile:", JSON.stringify(profile));
+            // Validate minimal requirements
+            if (profile.name && profile.personality && profile.talkingStyle) {
+                return profile;
+            }
+            throw new Error("Invalid profile format");
+        } catch (error) {
+            console.error("AI Profile Generation Error:", error);
+            return null;
+        }
+    }
+
     getSystemPrompt(player, gameState) {
         const livingPlayers = gameState.players.filter(p => p.alive).map(p => p.name).join(", ");
         const recentLogs = gameState.logs.slice(-5).join("\n");
+
+        let personalityContext = "";
+        if (player.personality && player.talkingStyle) {
+            personalityContext = `
+    Your personality: ${player.personality}
+    Your talking style: ${player.talkingStyle}
+    Adopt this persona in your chat messages and voting patterns.`;
+        }
 
         return `You are playing a game of social deduction (like Mafia/Werewolf).
     Your name is ${player.name}.
     Your role is ${player.role}.
     Your alignment is ${player.alignment}.
     Your objective: ${this.getGoal(player.role)}
+    ${personalityContext}
     
     Living players: ${livingPlayers}
     Recent events:

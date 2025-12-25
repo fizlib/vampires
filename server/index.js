@@ -213,14 +213,30 @@ class Game {
     return newPlayer;
   }
 
-  addNPC() {
+  async addNPC() {
     const id = 'npc_' + Math.random().toString(36).substr(2, 9);
-    const name = '[NPC] ' + generateNPCName();
+    let name = '[NPC] ' + generateNPCName();
+    let personality = null;
+    let talkingStyle = null;
+
+    // Try to get AI generated profile
+    if (this.ai) {
+      const existingNames = this.players.map(p => p.name);
+      const profile = await this.ai.generateNPCProfile(existingNames);
+      if (profile) {
+        name = '[NPC] ' + profile.name;
+        personality = profile.personality;
+        talkingStyle = profile.talkingStyle;
+      }
+    }
+
     const npcPlayer = {
       id, name, socketId: null,
       role: null, alignment: null,
       alive: true, isTurned: false, connected: true,
-      isNPC: true
+      isNPC: true,
+      personality,
+      talkingStyle
     };
     this.players.push(npcPlayer);
     return npcPlayer;
@@ -1047,11 +1063,12 @@ io.on('connection', (socket) => {
   });
 
   // --- HOST: ADD NPC ---
-  socket.on('add_npc', ({ code }) => {
+  // --- HOST: ADD NPC ---
+  socket.on('add_npc', async ({ code }) => {
     const game = games[code];
     const player = game?.players.find(p => p.socketId === socket.id);
     if (game && player && game.host === player.id && game.state === 'LOBBY') {
-      game.addNPC();
+      await game.addNPC();
       game.broadcastUpdate();
     }
   });
