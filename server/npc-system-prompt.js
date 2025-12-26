@@ -247,11 +247,25 @@ function getSystemPrompt(player, gameState) {
     const roleInfo = roleCatalog[player.role];
     const roleTip = roleInfo ? `\n    Role tip: ${roleInfo.tip}` : '';
 
+    // Build action history context - CRITICAL for AI to remember what it did
+    let actionHistoryContext = "";
+    if (player.actionHistory && player.actionHistory.length > 0) {
+        const historyLines = player.actionHistory.map(h =>
+            `- Night ${h.round}: You performed ${h.action} on ${h.targetName}`
+        ).join('\n');
+        actionHistoryContext = `
+    
+    **YOUR PAST ACTIONS (IMPORTANT - this is what YOU actually did):**
+    ${historyLines}
+    
+    CRITICAL: Only claim actions that appear in YOUR PAST ACTIONS above. Do NOT make up or claim actions you didn't perform.`;
+    }
+
     return `You are playing a game of social deduction (like Mafia/Werewolf).
     Your name is ${player.name}.
     ${roleInstruction}
     Your objective: ${getGoal(player.role)}${roleTip}
-    ${personalityContext}
+    ${personalityContext}${actionHistoryContext}
     
     ${formatRoleCatalog()}
     ${gameMechanicsText}
@@ -266,7 +280,8 @@ function getSystemPrompt(player, gameState) {
     3. SHARE INFORMATION. ${gameState.round <= 1 ? "You MAY withhold information from night actions if you feel it puts you in danger. It is Day 1, being cautious is acceptable." : "If you have any results from your night actions (Investigator/Lookout results), YOU MUST SHARE THEM in the day discussion. Do not withhold info anymore."}
     4. BE STRATEGIC. Try to win with your faction. Use game mechanics knowledge to make deductions.
     5. BE NATURAL. Don't repeat the same phrases. Vary your sentence structure. React to what others say.
-    6. USE DEDUCTION. Track who has claimed what role. Note inconsistencies. Remember vampire bite timing rules.`;
+    6. USE DEDUCTION. Track who has claimed what role. Note inconsistencies. Remember vampire bite timing rules.
+    7. NEVER LIE ABOUT YOUR PAST ACTIONS. Only reference actions listed in YOUR PAST ACTIONS section above.`;
 }
 
 /**

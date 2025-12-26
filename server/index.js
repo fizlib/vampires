@@ -143,6 +143,9 @@ class Game {
               // Check valid target
               if (target.role !== 'Vampire' && target.role !== 'Vampire Framer') {
                 this.nightActions[npc.id] = actionPayload;
+                // Record action in NPC's history for context
+                if (!npc.actionHistory) npc.actionHistory = [];
+                npc.actionHistory.push({ round: this.round, action: 'BITE', targetName: target.name });
               }
             } else if (decision.action === 'JAIL' && targetId && npc.role === 'Jailor') {
               // NPC Jailor jailing someone - set up jail state
@@ -152,6 +155,10 @@ class Game {
                 this.jailorId = npc.id;
                 this.jailChat = [];
                 console.log(`[Game] NPC Jailor ${npc.name} jailed ${jailTarget.name}`);
+
+                // Record action in NPC's history for context
+                if (!npc.actionHistory) npc.actionHistory = [];
+                npc.actionHistory.push({ round: this.round, action: 'JAIL', targetName: jailTarget.name });
 
                 // Notify both parties
                 if (jailTarget.socketId) {
@@ -165,6 +172,9 @@ class Game {
               }
             } else if (targetId || decision.action === 'EXECUTE') {
               this.nightActions[npc.id] = actionPayload;
+              // Record action in NPC's history for context
+              if (!npc.actionHistory) npc.actionHistory = [];
+              npc.actionHistory.push({ round: this.round, action: decision.action, targetName: target?.name || 'unknown' });
             }
           }
         }, Math.random() * 5000 + 2000); // 2-7 seconds delay
@@ -579,7 +589,8 @@ class Game {
       personality,
       talkingStyle,
       gender,
-      background
+      background,
+      actionHistory: [] // Track NPC's performed actions for context in AI decisions
     };
     this.players.push(npcPlayer);
     return npcPlayer;

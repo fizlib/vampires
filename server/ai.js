@@ -308,8 +308,37 @@ class AIController {
     parseJSON(text) {
         try {
             // Remove potential markdown code blocks
-            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            return JSON.parse(cleanText);
+            let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+            // First, try direct parsing
+            try {
+                return JSON.parse(cleanText);
+            } catch (directError) {
+                // If direct parsing fails, try to extract JSON from the text
+            }
+
+            // Look for JSON object pattern in the text
+            const jsonMatch = cleanText.match(/\{[\s\S]*?\}/);
+            if (jsonMatch) {
+                try {
+                    return JSON.parse(jsonMatch[0]);
+                } catch (matchError) {
+                    // Try to find the last JSON object (in case there are multiple)
+                    const allMatches = cleanText.match(/\{[^{}]*\}/g);
+                    if (allMatches) {
+                        for (let i = allMatches.length - 1; i >= 0; i--) {
+                            try {
+                                return JSON.parse(allMatches[i]);
+                            } catch (e) {
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+
+            console.error("Failed to parse JSON:", text);
+            return {};
         } catch (e) {
             console.error("Failed to parse JSON:", text);
             return {};
