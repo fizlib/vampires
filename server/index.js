@@ -49,13 +49,25 @@ const games = {};
 const shuffle = (array) => array.sort(() => Math.random() - 0.5);
 
 // Random NPC name generator
-const generateNPCName = () => {
+const generateNPCName = (existingNames = []) => {
   const adjectives = ['Shadow', 'Dark', 'Blood', 'Night', 'Crimson', 'Silent', 'Mystic', 'Ancient', 'Pale', 'Eternal', 'Grim', 'Hollow', 'Frost', 'Ember', 'Storm'];
   const nouns = ['Hunter', 'Walker', 'Stalker', 'Slayer', 'Seeker', 'Watcher', 'Phantom', 'Specter', 'Raven', 'Wolf', 'Crow', 'Shade', 'Wraith', 'Spirit', 'Ghost'];
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  const num = Math.floor(Math.random() * 100);
-  return `${adj}${noun}${num}`;
+  const lowerExisting = existingNames.map(n => n.toLowerCase());
+
+  // Try up to 50 times to generate a unique name
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    const num = Math.floor(Math.random() * 100);
+    const name = `${adj}${noun}${num}`;
+
+    if (!lowerExisting.includes(name.toLowerCase())) {
+      return name;
+    }
+  }
+
+  // Fallback with timestamp to guarantee uniqueness
+  return `NPC_${Date.now()}`;
 };
 
 class Game {
@@ -562,7 +574,10 @@ class Game {
 
   async addNPC() {
     const id = 'npc_' + Math.random().toString(36).substr(2, 9);
-    let name = generateNPCName();
+    const existingNames = this.players.map(p => p.name);
+    const lowerExistingNames = existingNames.map(n => n.toLowerCase());
+
+    let name = generateNPCName(existingNames);
     let personality = null;
     let talkingStyle = null;
     let gender = null;
@@ -570,14 +585,22 @@ class Game {
 
     // Try to get AI generated profile
     if (this.ai) {
-      const existingNames = this.players.map(p => p.name);
-      const profile = await this.ai.generateNPCProfile(existingNames);
-      if (profile) {
-        name = profile.name;
-        personality = profile.personality;
-        talkingStyle = profile.talkingStyle;
-        gender = profile.gender || null;
-        background = profile.background || null;
+      // Try up to 3 times to get a unique name from AI
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const profile = await this.ai.generateNPCProfile(existingNames);
+        if (profile && profile.name) {
+          // Validate that the AI-generated name is not a duplicate
+          if (!lowerExistingNames.includes(profile.name.toLowerCase())) {
+            name = profile.name;
+            personality = profile.personality;
+            talkingStyle = profile.talkingStyle;
+            gender = profile.gender || null;
+            background = profile.background || null;
+            break; // Successfully got a unique name
+          } else {
+            console.log(`[AI] Generated duplicate name "${profile.name}", retrying... (attempt ${attempt + 1})`);
+          }
+        }
       }
     }
 
