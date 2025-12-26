@@ -815,6 +815,15 @@ class Game {
       }
     });
 
+    // 1b. Track Jailor visits (jailing is not stored in nightActions but still counts as a visit)
+    if (this.jailedPlayerId && this.jailorId) {
+      const jailor = this.players.find(p => p.id === this.jailorId);
+      if (jailor) {
+        if (!visits[this.jailedPlayerId]) visits[this.jailedPlayerId] = [];
+        visits[this.jailedPlayerId].push(jailor.name);
+      }
+    }
+
     // 2. Consume Doctor Heals
     // Doctors lose a heal attempts even if they don't value save anyone, usually? 
     // The prompt says "3 heals that they can use". We will decrement for every action submitted.
