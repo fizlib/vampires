@@ -177,6 +177,12 @@ class Game {
                 if (!npc.actionHistory) npc.actionHistory = [];
                 npc.actionHistory.push({ round: this.round, action: 'JAIL', targetName: jailTarget.name });
 
+                // Record being jailed in the prisoner's receivedEvents (if they are an NPC)
+                if (jailTarget.isNPC) {
+                  if (!jailTarget.receivedEvents) jailTarget.receivedEvents = [];
+                  jailTarget.receivedEvents.push({ round: this.round, event: 'WAS_JAILED', byName: npc.name });
+                }
+
                 // Notify both parties
                 if (jailTarget.socketId) {
                   io.to(jailTarget.socketId).emit('private_message', '🔒 You have been jailed! The Jailor wishes to speak with you.');
@@ -642,7 +648,8 @@ class Game {
       talkingStyle,
       gender,
       background,
-      actionHistory: [] // Track NPC's performed actions for context in AI decisions
+      actionHistory: [], // Track NPC's performed actions for context in AI decisions
+      receivedEvents: [] // Track events that happened TO the NPC (jailed, turned, healed, etc.)
     };
     this.players.push(npcPlayer);
     return npcPlayer;
@@ -979,6 +986,11 @@ class Game {
                 if (doc && doc.socketId) {
                   io.to(doc.socketId).emit('private_message', `💉 You successfully saved your target from a vampire attack!`);
                 }
+                // Record being saved in the target NPC's receivedEvents
+                if (target.isNPC) {
+                  if (!target.receivedEvents) target.receivedEvents = [];
+                  target.receivedEvents.push({ round: this.round, event: 'WAS_SAVED', note: 'A Doctor saved you from a vampire attack.' });
+                }
               });
             } else {
               target.role = 'Vampire';
@@ -986,6 +998,12 @@ class Game {
               target.isTurned = true;
               turnedPlayer = target;
               this.logs.push(`[Night ${this.round}] A dark ritual took place... someone's nature has changed.`);
+
+              // Record being turned in the NPC's receivedEvents
+              if (target.isNPC) {
+                if (!target.receivedEvents) target.receivedEvents = [];
+                target.receivedEvents.push({ round: this.round, event: 'WAS_TURNED', note: 'You were bitten and turned into a Vampire. You are now evil.' });
+              }
             }
           }
         }
@@ -1098,6 +1116,11 @@ class Game {
         // Prisoner was not executed, just released
         if (prisoner && prisoner.socketId) {
           io.to(prisoner.socketId).emit('private_message', '🔓 Dawn breaks. The Jailor releases you from jail.');
+        }
+        // Record being released in NPC prisoner's receivedEvents
+        if (prisoner && prisoner.isNPC) {
+          if (!prisoner.receivedEvents) prisoner.receivedEvents = [];
+          prisoner.receivedEvents.push({ round: this.round, event: 'WAS_RELEASED', byName: jailor?.name || 'Jailor', note: 'The Jailor released you without executing.' });
         }
       }
     }
@@ -1544,6 +1567,12 @@ io.on('connection', (socket) => {
             });
           }
           delete game.nightActions[action.targetId];
+        }
+
+        // Record being jailed in the prisoner's receivedEvents (if they are an NPC)
+        if (target.isNPC) {
+          if (!target.receivedEvents) target.receivedEvents = [];
+          target.receivedEvents.push({ round: game.round, event: 'WAS_JAILED', byName: player.name });
         }
 
         // Notify both parties

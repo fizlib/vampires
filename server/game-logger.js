@@ -123,7 +123,7 @@ class GameLogger {
 
         // Action history
         if (npc.actionHistory && npc.actionHistory.length > 0) {
-            output += `\nACTION HISTORY:\n`;
+            output += `\nACTION HISTORY (Actions performed BY this NPC):\n`;
             for (const action of npc.actionHistory) {
                 let line = `- Night ${action.round}: ${action.action} on ${action.targetName}`;
                 if (action.result) {
@@ -133,6 +133,19 @@ class GameLogger {
             }
         } else {
             output += `\nACTION HISTORY: (No actions recorded)\n`;
+        }
+
+        // Received events
+        if (npc.receivedEvents && npc.receivedEvents.length > 0) {
+            output += `\nRECEIVED EVENTS (Events that happened TO this NPC):\n`;
+            for (const event of npc.receivedEvents) {
+                let line = `- Night ${event.round}: ${event.event}`;
+                if (event.byName) line += ` by ${event.byName}`;
+                if (event.note) line += ` - ${event.note}`;
+                output += line + '\n';
+            }
+        } else {
+            output += `\nRECEIVED EVENTS: (No events recorded)\n`;
         }
 
         return output;

@@ -266,11 +266,28 @@ function getSystemPrompt(player, gameState) {
     CRITICAL: Only claim actions and results that appear above. Do NOT make up or claim actions/results you didn't perform/receive.`;
     }
 
+    // Build received events context - events that happened TO this NPC
+    let receivedEventsContext = "";
+    if (player.receivedEvents && player.receivedEvents.length > 0) {
+        const eventLines = player.receivedEvents.map(e => {
+            let line = `- Night ${e.round}: ${e.event}`;
+            if (e.byName) line += ` by ${e.byName}`;
+            if (e.note) line += ` - ${e.note}`;
+            return line;
+        }).join('\n');
+        receivedEventsContext = `
+    
+    **EVENTS THAT HAPPENED TO YOU (things done TO you by others):**
+    ${eventLines}
+    
+    NOTE: These events affected you but you did NOT perform them. Use this knowledge strategically.`;
+    }
+
     return `You are playing a game of social deduction (like Mafia/Werewolf).
     Your name is ${player.name}.
     ${roleInstruction}
     Your objective: ${getGoal(player.role)}${roleTip}
-    ${personalityContext}${actionHistoryContext}
+    ${personalityContext}${actionHistoryContext}${receivedEventsContext}
     
     ${formatRoleCatalog()}
     ${gameMechanicsText}
