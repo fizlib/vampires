@@ -10,6 +10,7 @@ const AIController = require('./ai');
 const GoogleTTSController = require('./tts');
 const ElevenLabsTTSController = require('./elevenlabs-tts');
 const GoogleSTTController = require('./stt');
+const GameLogger = require('./game-logger');
 
 // Initialize TTS controllers (singletons) if credentials are available
 const googleTTSController = new GoogleTTSController();
@@ -109,6 +110,10 @@ class Game {
 
     // STT Controller reference
     this.stt = this.settings.enableSTT ? googleSTTController : null;
+
+    // Game Logger - captures console output and NPC context
+    this.logger = new GameLogger(code);
+    this.logger.startCapture();
   }
 
   // Trigger AI Actions
@@ -1161,6 +1166,8 @@ class Game {
         this.state = 'GAME_OVER';
         this.winner = 'Jester';
         this.logs.push(`[Day ${this.round}] The Jester was lynched! Jester Wins!`);
+        // Save logs when Jester wins
+        if (this.logger) this.logger.saveLogs(this.players);
         this.broadcastUpdate();
         return;
       }
@@ -1185,12 +1192,16 @@ class Game {
       this.winner = 'GOOD';
       if (this.interval) clearInterval(this.interval);
       this.logs.push('The vampires have been eliminated! Good wins!');
+      // Save logs when game ends naturally
+      if (this.logger) this.logger.saveLogs(this.players);
       this.broadcastUpdate();
     } else if (vamps.length >= living.length / 2) {
       this.state = 'GAME_OVER';
       this.winner = 'EVIL';
       if (this.interval) clearInterval(this.interval);
       this.logs.push('The vampires have taken over! Evil wins!');
+      // Save logs when game ends naturally
+      if (this.logger) this.logger.saveLogs(this.players);
       this.broadcastUpdate();
     }
   }
@@ -1231,6 +1242,8 @@ class Game {
     this.state = 'GAME_OVER';
     this.winner = winner;
     this.logs.push('The host has ended the game.');
+    // Save logs when host ends game
+    if (this.logger) this.logger.saveLogs(this.players);
     this.broadcastUpdate();
   }
 
