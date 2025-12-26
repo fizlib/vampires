@@ -14,6 +14,37 @@ class AIController {
 
     async generateNightAction(player, gameState) {
         console.log(`[AI] Generating Night Action for ${player.name} (${player.role})...`);
+
+        // Build vampire-specific reasoning context
+        let vampireContext = '';
+        if (player.alignment === 'evil' && (player.role === 'Vampire' || player.role === 'Vampire Framer')) {
+            const recentChats = gameState.gameChat?.slice(-15).map(c => `${c.senderName}: ${c.message}`).join("\n") || "(No chat history)";
+            vampireContext = `
+      
+      STRATEGIC BITE TARGET SELECTION:
+      Before choosing who to bite, carefully analyze ALL information:
+      
+      1. CHAT HISTORY - Who has claimed what role? Who is suspicious of whom?
+      ${recentChats}
+      
+      2. PRIORITY TARGETS TO ELIMINATE/TURN:
+         - Investigators who might expose you
+         - Lookouts who might catch you visiting
+         - Players who are suspicious of vampires
+         - Confirmed town roles that are dangerous to vampires
+      
+      3. TARGETS TO AVOID:
+         - Players likely to be protected by Doctor (confirmed important roles)
+         - Players who might be jailed
+         - Other vampires (you can't turn them)
+      
+      4. CONSIDER:
+         - Who has been most vocal against you or your team?
+         - Who has shared investigation results?
+         - Who seems to be leading the town?
+         - Who is flying under the radar but could be dangerous?`;
+        }
+
         const prompt = this.getSystemPrompt(player, gameState) +
             `\nIt is currently NIGHT. You need to perform your night action.
       Available actions based on your role (${player.role}):
@@ -24,6 +55,7 @@ class AIController {
       - Vampire: BITE <target_name> (only if turn is available, otherwise coordinate)
       - Vampire Framer: FRAME <target_name> (and BITE if available)
       - Citizen/Jester: NO_ACTION
+      ${vampireContext}
       
       Respond with a JSON object: { "action": "ACTION_TYPE", "targetName": "PlayerName" }
       If no action is needed or possible, return { "action": "NONE", "targetName": null }.
@@ -43,8 +75,37 @@ class AIController {
 
     async generateDayVote(player, gameState) {
         console.log(`[AI] Generating Day Vote for ${player.name}...`);
+
+        // Get chat history for context
+        const recentChats = gameState.gameChat?.slice(-15).map(c => `${c.senderName}: ${c.message}`).join("\n") || "(No chat history)";
+
         const prompt = this.getSystemPrompt(player, gameState) +
             `\nIt is currently DAY VOTING. You need to decide who to vote for lynching.
+      
+      BEFORE VOTING, carefully consider ALL available information:
+      
+      1. CHAT HISTORY - What has been said? Who claimed what role? Who accused whom?
+      ${recentChats}
+      
+      2. ANALYZE EACH LIVING PLAYER:
+         - What role did they claim (if any)?
+         - Were they accused by anyone? Did they defend themselves convincingly?
+         - Did they share any night action results? Were those results consistent?
+         - Are there contradictions in what they said vs what happened?
+         - Have they been acting suspicious or too quiet?
+      
+      3. YOUR OWN KNOWLEDGE:
+         - Your night action results (if any)
+         - Your suspicions based on behavior
+         - Your alignment and goals
+      
+      4. STRATEGIC CONSIDERATIONS:
+         ${player.alignment === 'evil' ?
+                '- You are EVIL. Vote for town members, not your vampire allies. Try to blend in with town voting patterns.' :
+                '- You are GOOD. Vote for the most suspicious player to eliminate vampires.'}
+         ${player.role === 'Jester' ? '- You are Jester! Try to get yourself lynched by acting slightly suspicious.' : ''}
+      
+      Based on ALL this information, choose who to vote for.
       Respond with a JSON object: { "vote": "PlayerName" } or { "vote": null } if you abstain.
       Do not include markdown formatting, just raw JSON.`;
 
@@ -62,10 +123,30 @@ class AIController {
 
     async generateUpdatedVote(player, gameState, currentVoteName) {
         console.log(`[AI] Re-evaluating Vote for ${player.name} (Currently voting: ${currentVoteName})...`);
+
+        // Get chat history for context
+        const recentChats = gameState.gameChat?.slice(-15).map(c => `${c.senderName}: ${c.message}`).join("\n") || "(No chat history)";
+
         const prompt = this.getSystemPrompt(player, gameState) +
             `\nIt is currently DAY VOTING.
       You have currently voted for: ${currentVoteName || "No one"}.
-      Considering the current vote counts and situation, do you want to CHANGE your vote?
+      
+      RE-EVALUATE your vote based on NEW information since you last voted:
+      
+      RECENT CHAT HISTORY:
+      ${recentChats}
+      
+      CONSIDER:
+      - Has anyone said something that clears or incriminates your current target?
+      - Has new evidence emerged against someone else?
+      - Is the vote close? Should you change to secure a lynch on a suspicious player?
+      - Has your current target defended themselves convincingly?
+      - Are people bandwagoning on someone who might be innocent?
+      ${player.alignment === 'evil' ?
+                '- As evil, try to vote with town to blend in, or push votes away from vampires.' :
+                '- As town, focus on voting out the most suspicious player.'}
+      
+      Based on the current situation, do you want to CHANGE your vote?
       
       Respond with a JSON object: { "vote": "NewTargetName" }
       - If you want to keep your vote, return the same name: { "vote": "${currentVoteName}" }.
