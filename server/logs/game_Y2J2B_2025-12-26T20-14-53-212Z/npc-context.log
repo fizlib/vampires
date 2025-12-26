@@ -1,0 +1,66 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: Y2J2B
+Start Time: 2025-12-26T20:14:53.212Z
+End Time: 2025-12-26T20:18:38.519Z
+Total NPCs: 4
+
+========================================
+NPC: Lukas
+========================================
+Role: Vampire (evil)
+Status: Dead
+Personality: Analytical and moderately talkative, Lukas is slightly skeptical but remains laid-back until directly challenged.
+Talking Style: Uses clear, direct language with varied sentence lengths, generally polite but can be pointed when questioning.
+Gender: male
+Fake Role (claimed): Doctor
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Steponas
+- Night 1: WAS_RELEASED by Steponas - The Jailor released you without executing.
+
+========================================
+NPC: Aidas
+========================================
+Role: Lookout (good)
+Status: Alive
+Personality: A moderately talkative and logical thinker, who remains observant but can become slightly defensive when directly challenged.
+Talking Style: Prefers clear, direct communication, using precise language and varying sentence structure naturally.
+Gender: male
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: LOOKOUT on Lukas → RESULT: Visited by: Steponas
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Rytis
+========================================
+Role: Doctor (good)
+Status: Alive
+Personality: A moderately talkative and logical player, Rytis is generally balanced and laid-back, but can be moderately assertive when discussing theories.
+Talking Style: Speaks clearly and directly, using a neutral tone. Questions are precise, and sentence structure varies naturally.
+Gender: male
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Gabija
+========================================
+Role: Investigator (good)
+Status: Alive
+Personality: Gabija is a logically analytical player, moderately assertive, and maintains a balanced skepticism. She becomes somewhat defensive when strongly accused.
+Talking Style: Communicates clearly with precise word choice and varied sentence structures. Her tone is polite but direct.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Steponas → RESULT: Target is a Jailor
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+END OF REPORT
+========================================

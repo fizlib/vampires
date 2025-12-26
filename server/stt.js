@@ -70,13 +70,14 @@ class GoogleSTTController {
 
             console.log(`[STT] Transcribing audio (${language}, ${audioBuffer.length} bytes)...`);
 
-            // Try with encoding auto-detection first (let Google figure it out)
+            // Browser MediaRecorder typically outputs WebM with Opus codec
             const request = {
                 audio: {
                     content: audioBuffer,
                 },
                 config: {
-                    // Remove explicit encoding - let Google auto-detect
+                    encoding: 'WEBM_OPUS',
+                    sampleRateHertz: 48000, // Default for Opus in WebM
                     languageCode: languageCode,
                     enableAutomaticPunctuation: true,
                     model: 'default',

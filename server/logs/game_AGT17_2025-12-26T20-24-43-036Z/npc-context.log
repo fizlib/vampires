@@ -1,0 +1,67 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: AGT17
+Start Time: 2025-12-26T20:24:43.036Z
+End Time: 2025-12-26T20:25:34.602Z
+Total NPCs: 4
+
+========================================
+NPC: Olivia
+========================================
+Role: Lookout (good)
+Status: Alive
+Personality: Olivia is a moderately talkative player, initially trusting but becomes moderately defensive if accused. She balances intuition with logical thought.
+Talking Style: Communicates in a friendly, conversational tone, offering thoughts directly while maintaining politeness and clarity.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: LOOKOUT on Emily → RESULT: No one visited.
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Steponas
+- Night 1: WAS_RELEASED by Steponas - The Jailor released you without executing.
+
+========================================
+NPC: Emily
+========================================
+Role: Doctor (good)
+Status: Alive
+Personality: Moderately talkative and generally trusting, Emily becomes moderately defensive when she feels unfairly accused, often relying on intuition.
+Talking Style: Communicates clearly and naturally, polite but direct. She uses varied sentence lengths, maintaining a neutral, approachable tone.
+Gender: female
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Olivia
+========================================
+Role: Vampire (evil)
+Status: Alive
+Personality: A moderately talkative player who balances intuition with logic. She's generally trusting, but can become assertive when a strong conviction arises.
+Talking Style: Clear and polite, with varied sentence length. She can be direct but remains respectful.
+Gender: female
+Fake Role (claimed): Investigator
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Emily → RESULT: Target is a Doctor
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Sarah
+========================================
+Role: Investigator (good)
+Status: Alive
+Personality: A moderately talkative player, she is generally trusting but can be analytical when pushed, asserting her thoughts calmly.
+Talking Style: Speaks clearly and directly, often using a friendly tone, but can be firm when stating deductions.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Emily → RESULT: Target is a Doctor
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+END OF REPORT
+========================================

@@ -1,0 +1,26 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: ECPV0
+Start Time: 2025-12-26T20:36:00.164Z
+End Time: 2025-12-26T20:44:29.879Z
+Total NPCs: 1
+
+========================================
+NPC: Gintarė
+========================================
+Role: Vampire Framer (evil)
+Status: Dead
+Personality: Somewhat cautious and analytical, she prefers to observe dynamics before contributing, but is moderately assertive when she has a strong opinion.
+Talking Style: Measured and clear, her contributions are direct and to the point, usually avoiding excessive small talk.
+Gender: female
+Fake Role (claimed): Doctor
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: FRAME on Robertas
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Mykolas
+- Night 1: WAS_RELEASED by Mykolas - The Jailor released you without executing.
+
+========================================
+END OF REPORT
+========================================
