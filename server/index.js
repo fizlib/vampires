@@ -1,4 +1,5 @@
 require('dotenv').config({ override: true });
+require('dotenv').config({ override: true });
 
 const express = require('express');
 const http = require('http');

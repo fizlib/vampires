@@ -4,7 +4,9 @@ import './App.css';
 
 // Dynamically connect to the server using the current hostname
 // This allows the app to work both on localhost and when accessed via IP address
-const socket = io(`http://${window.location.hostname}:3001`);
+// Connect to relative path - requests will be proxied to backend (https://localhost:3001)
+// This works because of src/setupProxy.js configuration
+const socket = io();
 
 // Random username generator
 const generateRandomUsername = () => {
@@ -141,6 +143,7 @@ function App() {
   const analyserRef = useRef(null);
   const vadTimeoutRef = useRef(null);
   const silenceTimeoutRef = useRef(null);
+  const micPermissionRequestedRef = useRef(false); // Track if we've requested mic permission this game
 
   // Settings - also persist these
   const [settings, setSettings] = useState(() => {
@@ -157,7 +160,17 @@ function App() {
       voiceInputMode: 'push-to-talk',
       ttsProvider: 'google',
       elevenlabsModel: 'eleven_turbo_v2_5',
-      npcNationality: 'english'
+      npcNationality: 'english',
+      npcAllowedRoles: {
+        Investigator: true,
+        Lookout: true,
+        Doctor: true,
+        Jailor: true,
+        Vampire: true,
+        'Vampire Framer': true,
+        Jester: true,
+        Citizen: true
+      }
     };
     if (savedSettings) {
       return { ...defaultSettings, ...JSON.parse(savedSettings) };
@@ -275,6 +288,39 @@ function App() {
     prevGameState.current = gameState;
   }, [gameState]);
 
+  // Request microphone permission when game starts (if voice chat is enabled)
+  useEffect(() => {
+    // Check if game is now in a playing state (not LOBBY)
+    const isPlaying = gameState?.state && gameState.state !== 'LOBBY';
+
+    // Check if voice chat is enabled (using gameState settings which are broadcast from server)
+    const voiceChatEnabled = gameState?.enableSTT && sttAvailable;
+
+    // Reset the flag when returning to LOBBY
+    if (gameState?.state === 'LOBBY') {
+      micPermissionRequestedRef.current = false;
+      return;
+    }
+
+    // Request permission once when game starts with voice chat enabled
+    if (isPlaying && voiceChatEnabled && !micPermissionRequestedRef.current) {
+      micPermissionRequestedRef.current = true;
+      console.log('[Voice] Game started with voice chat enabled - requesting microphone permission');
+      // Request microphone permission but immediately release it
+      // This prompts the user without keeping the mic active
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          console.log('[Voice] Microphone permission granted');
+          // Stop all tracks immediately - we just wanted permission
+          stream.getTracks().forEach(track => track.stop());
+        })
+        .catch(err => {
+          console.error('[Voice] Microphone permission denied:', err);
+          alert('Microphone access denied. Voice chat will not work. Please allow microphone permissions in your browser settings.');
+        });
+    }
+  }, [gameState?.state, gameState?.enableSTT, sttAvailable]);
+
   // Auto-scroll chat to bottom when new messages arrive
   useEffect(() => {
     if (chatMessagesRef.current) {
@@ -337,6 +383,34 @@ function App() {
       document.documentElement.removeAttribute('data-phase');
     };
   }, [gameState?.state, selectedTheme]);
+
+  // Auto-start/stop VAD listening based on game phase and settings
+  useEffect(() => {
+    const isDayDiscuss = gameState?.state === 'DAY_DISCUSS';
+    const myPlayer = gameState?.players.find(p => p.id === myId);
+    // Use gameState settings (broadcast from server) so all players get the host's settings
+    const shouldAutoStartVAD =
+      isDayDiscuss &&
+      myPlayer?.alive &&
+      gameState?.voiceInputMode === 'voice-activity' &&
+      gameState?.enableSTT &&
+      sttAvailable;
+
+    if (shouldAutoStartVAD && !isListening) {
+      console.log('[VAD] Auto-starting voice activity detection');
+      startVADListening();
+    } else if (!isDayDiscuss && isListening) {
+      console.log('[VAD] Auto-stopping voice activity detection (left DAY_DISCUSS)');
+      stopVADListening();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (isListening) {
+        stopVADListening();
+      }
+    };
+  }, [gameState?.state, gameState?.players, myId, gameState?.voiceInputMode, gameState?.enableSTT, sttAvailable]);
 
   // Handle theme change
   const changeTheme = (theme) => {
@@ -521,6 +595,7 @@ function App() {
       socket.off('elevenlabs_options', handleElevenlabsOptions);
       socket.off('stt_available', handleSTTAvailable);
     };
+    // Debug connection events removed
   }, []); // Empty dependency array - run only once on mount
 
   // Helpers
@@ -1241,6 +1316,32 @@ function App() {
                 </div>
               )}
               {settings.enableAI && (
+                <div className="game-setting-item">
+                  <label>NPC Allowed Roles:</label>
+                  <div className="npc-roles-grid">
+                    {['Investigator', 'Lookout', 'Doctor', 'Jailor', 'Vampire', 'Vampire Framer', 'Jester', 'Citizen'].map(role => (
+                      <label key={role} className="npc-role-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={settings.npcAllowedRoles?.[role] !== false}
+                          onChange={e => {
+                            const newNpcAllowedRoles = {
+                              ...settings.npcAllowedRoles,
+                              [role]: e.target.checked
+                            };
+                            const newSettings = { ...settings, npcAllowedRoles: newNpcAllowedRoles };
+                            setSettings(newSettings);
+                            localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                            socket.emit('update_settings', { code, settings: newSettings });
+                          }}
+                        />
+                        <span className="role-name">{role}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {settings.enableAI && (
                 <div className="game-setting-item checkbox-setting">
                   <label>
                     <input
@@ -1826,21 +1927,17 @@ function App() {
                 ) : null}
 
                 {/* Voice input button - only during DAY_DISCUSS phase */}
-                {gameState.state === 'DAY_DISCUSS' && myPlayer?.alive && settings.enableSTT && sttAvailable && (
-                  settings.voiceInputMode === 'voice-activity' ? (
+                {gameState.state === 'DAY_DISCUSS' && myPlayer?.alive && gameState.enableSTT && sttAvailable && (
+                  gameState.voiceInputMode === 'voice-activity' ? (
                     <div className="voice-vad-container">
-                      <button
-                        className={`voice-btn vad-btn ${isListening ? 'listening' : ''} ${isRecording ? 'recording' : ''}`}
-                        onClick={() => isListening ? stopVADListening() : startVADListening()}
-                        title={isListening ? 'Click to stop listening' : 'Click to start listening'}
-                      >
-                        {isListening ? (isRecording ? '🔴 Speaking...' : '🎤 Listening...') : '🎤 Start Listening'}
-                      </button>
-                      {isListening && (
+                      <div className="vad-status-indicator">
+                        <div className="vad-status-text">
+                          {isRecording ? '🔴 Speaking...' : '🎤 Listening...'}
+                        </div>
                         <div className="audio-level-bar">
                           <div className="audio-level-fill" style={{ width: `${audioLevel}%` }} />
                         </div>
-                      )}
+                      </div>
                     </div>
                   ) : (
                     <button
