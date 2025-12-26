@@ -899,12 +899,12 @@ class Game {
 
             if (isJailed) {
               // Jailed players are protected from vampire bites
-              this.logs.push(`The vampires tried to attack, but their target was unreachable!`);
+              this.logs.push(`[Night ${this.round}] The vampires tried to attack, but their target was unreachable!`);
               aliveVampires.forEach(vamp => {
                 if (vamp.socketId) io.to(vamp.socketId).emit('private_message', `🧛 Your target was protected by the Jailor!`);
               });
             } else if (isHealed) {
-              this.logs.push(`The vampires tried to attack, but their target was saved by a doctor!`);
+              this.logs.push(`[Night ${this.round}] The vampires tried to attack, but their target was saved by a doctor!`);
               aliveVampires.forEach(vamp => {
                 if (vamp.socketId) io.to(vamp.socketId).emit('private_message', `🧛 Your target was saved by a Doctor!`);
               });
@@ -919,7 +919,7 @@ class Game {
               target.alignment = 'evil';
               target.isTurned = true;
               turnedPlayer = target;
-              this.logs.push(`A dark ritual took place... someone's nature has changed.`);
+              this.logs.push(`[Night ${this.round}] A dark ritual took place... someone's nature has changed.`);
             }
           }
         }
@@ -1004,7 +1004,7 @@ class Game {
       if (jailAction && jailAction.type === 'EXECUTE' && prisoner && prisoner.alive) {
         // Execute the prisoner
         prisoner.alive = false;
-        this.logs.push(`${prisoner.name} was executed by the Jailor.`);
+        this.logs.push(`[Night ${this.round}] ${prisoner.name} was executed by the Jailor.`);
 
         // If prisoner was innocent (good alignment), jailor will die
         if (prisoner.alignment === 'good') {
@@ -1037,7 +1037,7 @@ class Game {
       const jailor = this.players.find(p => p.id === this.jailorId);
       if (jailor && jailor.alive) {
         jailor.alive = false;
-        this.logs.push(`${jailor.name} was consumed by guilt and died!`);
+        this.logs.push(`[Day ${this.round}] ${jailor.name} was consumed by guilt and died!`);
       }
       this.jailorPendingDeath = false;
     }
@@ -1084,21 +1084,21 @@ class Game {
     if (lynchedId) {
       const victim = this.players.find(p => p.id === lynchedId);
       victim.alive = false;
-      this.logs.push(`${victim.name} was lynched!`);
+      this.logs.push(`[Day ${this.round}] ${victim.name} was lynched!`);
 
       if (victim.role === 'Jester') {
         this.state = 'GAME_OVER';
         this.winner = 'Jester';
-        this.logs.push(`The Jester was lynched! Jester Wins!`);
+        this.logs.push(`[Day ${this.round}] The Jester was lynched! Jester Wins!`);
         this.broadcastUpdate();
         return;
       }
 
       if (this.settings.revealRole) {
-        this.logs.push(`${victim.name} was a ${victim.role}`);
+        this.logs.push(`[Day ${this.round}] ${victim.name} was a ${victim.role}`);
       }
     } else {
-      this.logs.push("No one received enough votes.");
+      this.logs.push(`[Day ${this.round}] No one received enough votes.`);
     }
 
     this.checkWinCondition();
