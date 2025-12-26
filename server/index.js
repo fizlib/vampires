@@ -218,25 +218,46 @@ class Game {
       }
     }
 
-    // Day Discussion (Chat) - NPCs respond to new messages instead of continuous loop
+    // Day Discussion (Chat) - NPCs respond to new messages and share info proactively
     if (this.state === 'DAY_DISCUSS') {
       // Initialize the set to track which NPCs have responded since the last non-NPC message
       this.npcRespondedSinceLastMessage = new Set();
+      this.npcHasSharedInfo = new Set(); // Track which NPCs have shared their info this phase
 
       // Send an initial message from one random NPC to start the conversation
       if (npcPlayers.length > 0) {
         const randomNpc = npcPlayers[Math.floor(Math.random() * npcPlayers.length)];
         setTimeout(async () => {
           if (this.state !== 'DAY_DISCUSS' || !randomNpc.alive) return;
-          await this.triggerNPCChatResponse(randomNpc);
+          await this.triggerNPCChatResponse(randomNpc, false, true); // proactive initial message
         }, Math.random() * 3000 + 2000);
       }
 
+      // Proactive sharing: Give each NPC a chance to share information during the discussion
+      // Stagger the timing so they don't all speak at once
+      const discussTime = (this.settings.discussTime || 45) * 1000;
+      const proactiveWindow = discussTime * 0.6; // Use first 60% of discussion time for proactive sharing
+
+      npcPlayers.forEach((npc, index) => {
+        // Calculate a delay spread across the proactive window
+        const baseDelay = 5000 + (proactiveWindow / npcPlayers.length) * index;
+        const jitter = Math.random() * 5000; // Add some randomness
+        const delay = baseDelay + jitter;
+
+        setTimeout(async () => {
+          if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
+          // Only trigger if they haven't shared info yet
+          if (!this.npcHasSharedInfo.has(npc.id)) {
+            await this.triggerNPCChatResponse(npc, false, true); // proactive share
+            this.npcHasSharedInfo.add(npc.id);
+          }
+        }, delay);
+      });
     }
   }
 
   // Helper method to trigger a single NPC chat response
-  async triggerNPCChatResponse(npc, isAddressed = false) {
+  async triggerNPCChatResponse(npc, isAddressed = false, isProactive = false) {
     if (!this.ai || this.state !== 'DAY_DISCUSS' || !npc.alive) return;
 
     // Check cooldown to prevent spam (ignored if directly addressed)
@@ -248,7 +269,7 @@ class Game {
     }
 
     try {
-      const message = await this.ai.generateChat(npc, this, isAddressed);
+      const message = await this.ai.generateChat(npc, this, isAddressed, isProactive);
 
       if (message && message !== 'SILENCE' && this.state === 'DAY_DISCUSS') {
         // Update cooldown timestamp

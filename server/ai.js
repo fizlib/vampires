@@ -86,7 +86,7 @@ class AIController {
         }
     }
 
-    async generateChat(player, gameState, isAddressed = false) {
+    async generateChat(player, gameState, isAddressed = false, isProactive = false) {
         console.log(`[AI] Generating Chat for ${player.name}...`);
 
         // Get last 10 chat messages
@@ -97,20 +97,47 @@ class AIController {
             ? 'IMPORTANT: You MUST respond in Lithuanian language.'
             : 'Respond in English.';
 
+        // Build appropriate speaking instruction based on context
+        let speakingInstruction;
+        if (isAddressed) {
+            speakingInstruction = "You have been DIRECTLY ADDRESSED. You MUST respond clearly to what was said to you.";
+        } else if (isProactive) {
+            speakingInstruction = `This is your chance to share information or contribute to the discussion.
+      
+      SPEAK if you have ANY of these:
+      - Night action results you haven't shared yet (e.g., investigation results, who you saw visiting someone)
+      - A suspicion or observation about another player's behavior
+      - A defense if someone has accused you or seems suspicious of you
+      - Support or agreement with someone's claim
+      - A question that could help the town
+      
+      Only respond 'SILENCE' if you truly have NOTHING useful to add right now.`;
+        } else {
+            speakingInstruction = `Consider responding if:
+      - You have relevant information to share (night results, suspicions)
+      - Someone made a claim you want to react to
+      - The discussion is relevant to your investigation or observations
+      
+      Be thoughtful - don't spam, but don't stay completely quiet if you have something useful to say.
+      Respond 'SILENCE' only if you have nothing meaningful to contribute right now.`;
+        }
+
         const prompt = this.getSystemPrompt(player, gameState) +
-            `\nIt is currently DAY DISCUSSION. 
+            `\nIt is currently DAY DISCUSSION. Round: ${gameState.round}
       
       Recent Chat History:
       ${recentChats || "(No chat history yet)"}
       
-      ${isAddressed ? "You have been DIRECTLY ADDRESSED. You MUST respond clearly." : "You have NOT been directly addressed. Only respond if you have CRITICAL information (like night results) or a strong strategic reason. If not, respond with 'SILENCE'."}
+      ${speakingInstruction}
       
       Respond with a short, in-character chat message.
-      - React to what others are saying in the Recent Chat History.
-      - Defend yourself if accused.
-      - Accuse others if you have suspicion.
-      - If you have nothing relevant to say or want to remain silent, respond with just "SILENCE".
-      - Keep it under 100 characters.
+      - Share your night action results if you have any and haven't shared them
+      - React to accusations, claims, or discussions in chat
+      - Defend yourself if accused
+      - Accuse others if you have suspicion
+      - Support or question others' claims
+      - If you truly have nothing relevant to add, respond with just "SILENCE"
+      - Keep it under 100 characters
       ${languageInstruction}`;
 
         try {
