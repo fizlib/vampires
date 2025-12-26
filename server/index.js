@@ -193,7 +193,7 @@ class Game {
       }
     }
 
-    // Day Voting
+    // Day Voting - Optimized for speed: all NPC votes run in parallel
     if (this.state === 'DAY_VOTE') {
       const handleVote = (npc, voteName) => {
         if (voteName) {
@@ -218,26 +218,50 @@ class Game {
         }
       };
 
-      for (const npc of npcPlayers) {
-        // Initial Vote
-        const initialDelay = Math.random() * 4000 + 2000;
+      // Run all initial votes in parallel with minimal staggered delays
+      const votePromises = npcPlayers.map((npc, index) => {
+        // Small stagger to prevent all votes appearing at exact same time (0.5-1.5s per NPC)
+        const initialDelay = 500 + (index * 200) + Math.random() * 1000;
 
-        setTimeout(async () => {
-          if (!npc.alive || this.state !== 'DAY_VOTE') return;
-          const res = await this.ai.generateDayVote(npc, this);
-          handleVote(npc, res.vote);
-        }, initialDelay);
+        return new Promise(resolve => {
+          setTimeout(async () => {
+            if (!npc.alive || this.state !== 'DAY_VOTE') {
+              resolve();
+              return;
+            }
+            try {
+              const res = await this.ai.generateDayVote(npc, this);
+              handleVote(npc, res.vote);
+            } catch (err) {
+              console.error(`[Game] Vote error for ${npc.name}:`, err);
+            }
+            resolve();
+          }, initialDelay);
+        });
+      });
 
-        // 2. Re-evaluation
-        setTimeout(async () => {
-          if (!npc.alive || this.state !== 'DAY_VOTE') return;
-          const currentTargetId = this.votes[npc.id];
-          const currentTarget = currentTargetId ? this.players.find(p => p.id === currentTargetId) : null;
+      // Wait for all initial votes, then do re-evaluation if time permits
+      Promise.all(votePromises).then(() => {
+        // Only re-evaluate if we're still in voting phase and have time
+        if (this.state !== 'DAY_VOTE') return;
 
-          const res = await this.ai.generateUpdatedVote(npc, this, currentTarget?.name || null);
-          handleVote(npc, res.vote);
-        }, Math.random() * 3000 + 8000);
-      }
+        // Re-evaluation votes (also in parallel, but only if voting is still active)
+        npcPlayers.forEach((npc, index) => {
+          const reEvalDelay = 1000 + (index * 300) + Math.random() * 1500;
+
+          setTimeout(async () => {
+            if (!npc.alive || this.state !== 'DAY_VOTE') return;
+            try {
+              const currentTargetId = this.votes[npc.id];
+              const currentTarget = currentTargetId ? this.players.find(p => p.id === currentTargetId) : null;
+              const res = await this.ai.generateUpdatedVote(npc, this, currentTarget?.name || null);
+              handleVote(npc, res.vote);
+            } catch (err) {
+              console.error(`[Game] Re-vote error for ${npc.name}:`, err);
+            }
+          }, reEvalDelay);
+        });
+      });
     }
 
     // Day Discussion (Chat) - NPCs respond to new messages and share info proactively

@@ -15,6 +15,51 @@ class AIController {
     async generateNightAction(player, gameState) {
         console.log(`[AI] Generating Night Action for ${player.name} (${player.role})...`);
 
+        // Determine if vampires can bite tonight (even nights only)
+        const round = gameState.round || 1;
+        const isEvenNight = round % 2 === 0;
+        const canVampiresBite = isEvenNight;
+
+        // Build Doctor-specific reasoning context
+        let doctorContext = '';
+        if (player.role === 'Doctor') {
+            const recentChats = gameState.gameChat?.slice(-15).map(c => `${c.senderName}: ${c.message}`).join("\n") || "(No chat history)";
+
+            if (!canVampiresBite) {
+                doctorContext = `
+      
+      ⚠️ CRITICAL DOCTOR STRATEGY FOR NIGHT ${round} (ODD NIGHT):
+      Vampires CANNOT bite on odd nights (Night 1, 3, 5...). This means NO ONE can be turned into a vampire tonight.
+      
+      STRONG RECOMMENDATION: Save your heal for an even night when vampires CAN actually bite!
+      You only have 3 heals total - don't waste them when there's no threat.
+      
+      Return { "action": "NONE", "targetName": null } to save your heal for when it matters.
+      
+      Only heal tonight if you have a very specific reason (which is rare on odd nights).`;
+            } else {
+                doctorContext = `
+      
+      STRATEGIC HEAL TARGET SELECTION (EVEN NIGHT - VAMPIRES CAN BITE!):
+      This is an even night - vampires CAN bite tonight! Your heal could save someone's life.
+      
+      CHAT HISTORY - Analyze who might be targeted:
+      ${recentChats}
+      
+      PRIORITY TARGETS TO HEAL:
+      - Players who have claimed important roles (Investigator, Lookout, Jailor)
+      - Players who have called out vampires or are leading the town
+      - Players who seem to be vampire targets based on chat
+      
+      TARGETS LESS LIKELY TO NEED HEALING:
+      - Players who are already suspicious (vampires might let town lynch them)
+      - Silent players who aren't drawing attention
+      - Players who might be protected by Jailor
+      
+      Remember: You have limited heals. Make them count!`;
+            }
+        }
+
         // Build vampire-specific reasoning context
         let vampireContext = '';
         if (player.alignment === 'evil' && (player.role === 'Vampire' || player.role === 'Vampire Framer')) {
@@ -55,6 +100,7 @@ class AIController {
       - Vampire: BITE <target_name> (only if turn is available, otherwise coordinate)
       - Vampire Framer: FRAME <target_name> (and BITE if available)
       - Citizen/Jester: NO_ACTION
+      ${doctorContext}
       ${vampireContext}
       
       Respond with a JSON object: { "action": "ACTION_TYPE", "targetName": "PlayerName" }
@@ -175,7 +221,7 @@ class AIController {
 
         // Language instruction based on nationality
         const languageInstruction = this.nationality === 'lithuanian'
-            ? 'IMPORTANT: You MUST respond in Lithuanian language.'
+            ? 'IMPORTANT: You MUST respond in Lithuanian language. EXCEPTION: Role names must ALWAYS be written in English (Investigator, Lookout, Doctor, Jailor, Citizen, Vampire, Vampire Framer, Jester). For example: "Aš esu Investigator" NOT "Aš esu Tyrėjas".'
             : 'Respond in English.';
 
         // Build appropriate speaking instruction based on context
@@ -238,9 +284,15 @@ class AIController {
     async generateJailResponse(player, gameState, jailChat, jailorName) {
         console.log(`[AI] Generating Jail Response for ${player.name}...`);
 
+        // Language instruction based on nationality
+        const languageInstruction = this.nationality === 'lithuanian'
+            ? 'IMPORTANT: You MUST respond in Lithuanian language. EXCEPTION: Role names must ALWAYS be written in English (Investigator, Lookout, Doctor, Jailor, Citizen, Vampire, Vampire Framer, Jester).'
+            : 'Respond in English.';
+
         const prompt = getJailInterrogationPrompt(player, gameState, jailChat, false, jailorName) +
             `\n\nRespond to the Jailor. Be convincing. Keep it under 100 characters.
-            Respond with just your message, no JSON formatting.`;
+            Respond with just your message, no JSON formatting.
+            ${languageInstruction}`;
 
         try {
             const result = await this.model.generateContent(prompt);
@@ -259,9 +311,15 @@ class AIController {
     async generateJailorMessage(player, gameState, jailChat, prisonerName) {
         console.log(`[AI] Generating Jailor Interrogation for ${player.name}...`);
 
+        // Language instruction based on nationality
+        const languageInstruction = this.nationality === 'lithuanian'
+            ? 'IMPORTANT: You MUST respond in Lithuanian language. EXCEPTION: Role names must ALWAYS be written in English (Investigator, Lookout, Doctor, Jailor, Citizen, Vampire, Vampire Framer, Jester).'
+            : 'Respond in English.';
+
         const prompt = getJailInterrogationPrompt(player, gameState, jailChat, true, prisonerName) +
             `\n\nAsk the prisoner a question or make a statement to interrogate them.
-            Keep it under 100 characters. Respond with just your message, no JSON formatting.`;
+            Keep it under 100 characters. Respond with just your message, no JSON formatting.
+            ${languageInstruction}`;
 
         try {
             const result = await this.model.generateContent(prompt);
@@ -280,6 +338,11 @@ class AIController {
     async generateExecuteDecision(player, gameState, jailChat, prisonerName) {
         console.log(`[AI] Generating Execute Decision for ${player.name}...`);
 
+        // Language instruction based on nationality (for the reason field)
+        const languageInstruction = this.nationality === 'lithuanian'
+            ? 'IMPORTANT: The "reason" field in your JSON response MUST be in Lithuanian language. Role names must still be in English.'
+            : '';
+
         const prompt = getJailInterrogationPrompt(player, gameState, jailChat, true, prisonerName) +
             `\n\nBased on the interrogation, decide whether to EXECUTE the prisoner or SPARE them.
             
@@ -291,7 +354,8 @@ class AIController {
             - REMEMBER: Executing an innocent will KILL YOU!
             
             Respond with a JSON object: { "execute": true/false, "reason": "brief reason" }
-            Do not include markdown formatting, just raw JSON.`;
+            Do not include markdown formatting, just raw JSON.
+            ${languageInstruction}`;
 
         try {
             const result = await this.model.generateContent(prompt);
