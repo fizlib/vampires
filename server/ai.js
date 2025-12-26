@@ -1,5 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { getSystemPrompt, getGoal } = require("./npc-system-prompt");
+const { getSystemPrompt, getGoal, getProfileGenerationPrompt, getJailInterrogationPrompt } = require("./npc-system-prompt");
 
 class AIController {
     constructor(apiKey, nationality = 'english') {
@@ -144,6 +144,79 @@ class AIController {
         }
     }
 
+    /**
+     * Generate a response for a jailed NPC (prisoner responding to jailor)
+     */
+    async generateJailResponse(player, gameState, jailChat, jailorName) {
+        console.log(`[AI] Generating Jail Response for ${player.name}...`);
+
+        const prompt = getJailInterrogationPrompt(player, gameState, jailChat, false, jailorName) +
+            `\n\nRespond to the Jailor. Be convincing. Keep it under 100 characters.
+            Respond with just your message, no JSON formatting.`;
+
+        try {
+            const result = await this.model.generateContent(prompt);
+            const msg = result.response.text().trim();
+            console.log(`[AI] Jail Response from ${player.name}:`, msg);
+            return msg;
+        } catch (error) {
+            console.error("AI Jail Response Error:", error);
+            return "I'm innocent, I swear!";
+        }
+    }
+
+    /**
+     * Generate an interrogation message for an NPC Jailor
+     */
+    async generateJailorMessage(player, gameState, jailChat, prisonerName) {
+        console.log(`[AI] Generating Jailor Interrogation for ${player.name}...`);
+
+        const prompt = getJailInterrogationPrompt(player, gameState, jailChat, true, prisonerName) +
+            `\n\nAsk the prisoner a question or make a statement to interrogate them.
+            Keep it under 100 characters. Respond with just your message, no JSON formatting.`;
+
+        try {
+            const result = await this.model.generateContent(prompt);
+            const msg = result.response.text().trim();
+            console.log(`[AI] Jailor Message from ${player.name}:`, msg);
+            return msg;
+        } catch (error) {
+            console.error("AI Jailor Message Error:", error);
+            return "What is your role?";
+        }
+    }
+
+    /**
+     * Generate an execution decision for an NPC Jailor
+     */
+    async generateExecuteDecision(player, gameState, jailChat, prisonerName) {
+        console.log(`[AI] Generating Execute Decision for ${player.name}...`);
+
+        const prompt = getJailInterrogationPrompt(player, gameState, jailChat, true, prisonerName) +
+            `\n\nBased on the interrogation, decide whether to EXECUTE the prisoner or SPARE them.
+            
+            Consider:
+            - Do their claims match what you know from the game?
+            - Are they being evasive or contradictory?
+            - What role do they claim? Does it make sense?
+            - Would executing them help the town or hurt it?
+            - REMEMBER: Executing an innocent will KILL YOU!
+            
+            Respond with a JSON object: { "execute": true/false, "reason": "brief reason" }
+            Do not include markdown formatting, just raw JSON.`;
+
+        try {
+            const result = await this.model.generateContent(prompt);
+            const text = result.response.text();
+            const decision = this.parseJSON(text);
+            console.log(`[AI] Execute Decision from ${player.name}:`, JSON.stringify(decision));
+            return decision;
+        } catch (error) {
+            console.error("AI Execute Decision Error:", error);
+            return { execute: false, reason: "Uncertain - better safe than sorry" };
+        }
+    }
+
     parseJSON(text) {
         try {
             // Remove potential markdown code blocks
@@ -164,28 +237,7 @@ class AIController {
             ? 'Generate a Lithuanian first name (e.g., Vytautas, Giedrius, Rasa, Eglė, Jonas, Dalia, Mindaugas, Aušra). The name should be authentic Lithuanian.'
             : 'Generate an English/American first name (e.g., James, Sarah, Michael, Emily, David, Jessica). The name should be a common English name.';
 
-        const prompt = `Generate a unique profile for a player in a social deduction game (like Mafia/Werewolf).
-        
-        Existing names you MUST NOT USE: ${forbiddenNames}
-        
-        ${nameInstruction}
-        
-        The personality should be **strategic and game-focused**.
-        The talking style MUST be **clear, concise, and direct**.
-        Do NOT generate "stuttering", "shouting", "cryptic", or "whispering" styles.
-        The goal is to be easily understood by other players.
-
-        Include a short **background story** (1 sentence) that explains who they are (e.g., "A focused detective," "A calm doctor").
-
-        Respond with a JSON object: 
-        { 
-            "name": "A unique realistic first name only. Must NOT be in the excluded list.", 
-            "gender": "male or female - based on the generated name",
-            "personality": "A brief description of their personality (e.g., 'Analytical and direct', 'Calm and persuasive')",
-            "talkingStyle": "A brief description of how they talk (e.g., 'Clear and to the point', 'Polite but firm')",
-            "background": "A short 1-sentence background story."
-        }
-        Do not include markdown formatting, just raw JSON.`;
+        const prompt = getProfileGenerationPrompt(forbiddenNames, nameInstruction);
 
         try {
             const result = await this.model.generateContent(prompt);

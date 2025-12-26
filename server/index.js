@@ -144,6 +144,25 @@ class Game {
               if (target.role !== 'Vampire' && target.role !== 'Vampire Framer') {
                 this.nightActions[npc.id] = actionPayload;
               }
+            } else if (decision.action === 'JAIL' && targetId && npc.role === 'Jailor') {
+              // NPC Jailor jailing someone - set up jail state
+              const jailTarget = this.players.find(p => p.id === targetId);
+              if (jailTarget && jailTarget.alive && jailTarget.id !== npc.id) {
+                this.jailedPlayerId = targetId;
+                this.jailorId = npc.id;
+                this.jailChat = [];
+                console.log(`[Game] NPC Jailor ${npc.name} jailed ${jailTarget.name}`);
+
+                // Notify both parties
+                if (jailTarget.socketId) {
+                  io.to(jailTarget.socketId).emit('private_message', '🔒 You have been jailed! The Jailor wishes to speak with you.');
+                }
+
+                this.broadcastUpdate();
+
+                // Start interrogation after a short delay
+                this.startNPCJailorInterrogation(npc, jailTarget);
+              }
             } else if (targetId || decision.action === 'EXECUTE') {
               this.nightActions[npc.id] = actionPayload;
             }
@@ -364,6 +383,159 @@ class Game {
         await this.triggerNPCChatResponse(npc, false);
       }, delay);
     });
+  }
+
+  // Handle NPC Jailor interrogation
+  async startNPCJailorInterrogation(jailor, prisoner) {
+    if (!this.ai || this.state !== 'NIGHT') return;
+
+    console.log(`[Game] Starting NPC Jailor interrogation: ${jailor.name} -> ${prisoner.name}`);
+
+    // Send first interrogation message after a delay
+    setTimeout(async () => {
+      if (this.state !== 'NIGHT' || !this.jailedPlayerId) return;
+
+      try {
+        const message = await this.ai.generateJailorMessage(jailor, this, this.jailChat, prisoner.name);
+        if (message && this.state === 'NIGHT' && this.jailedPlayerId) {
+          const chatMsg = {
+            sender: 'Jailor',
+            message: message.substring(0, 200),
+            timestamp: Date.now()
+          };
+          this.jailChat.push(chatMsg);
+
+          // Send to both parties
+          if (jailor.socketId) {
+            io.to(jailor.socketId).emit('jail_chat_update', this.jailChat);
+          }
+          if (prisoner.socketId) {
+            io.to(prisoner.socketId).emit('jail_chat_update', this.jailChat);
+          }
+
+          // If prisoner is also an NPC, they should respond
+          if (prisoner.isNPC && prisoner.alive) {
+            this.triggerNPCPrisonerResponse(jailor, prisoner);
+          }
+        }
+      } catch (err) {
+        console.error('[Game] NPC Jailor interrogation error:', err);
+      }
+    }, Math.random() * 2000 + 2000); // 2-4 seconds for first message
+
+    // Schedule execution decision near end of night
+    const nightTime = this.settings.nightTime || 25;
+    const decisionDelay = Math.max((nightTime - 5) * 1000, 10000); // 5 seconds before night ends, minimum 10 seconds
+
+    setTimeout(async () => {
+      if (this.state !== 'NIGHT' || !this.jailedPlayerId || this.jailorId !== jailor.id) return;
+
+      try {
+        const decision = await this.ai.generateExecuteDecision(jailor, this, this.jailChat, prisoner.name);
+        console.log(`[Game] NPC Jailor ${jailor.name} decision:`, decision);
+
+        if (decision.execute) {
+          // Submit execute action
+          this.nightActions[jailor.id] = { type: 'EXECUTE', actorId: jailor.id, targetId: this.jailedPlayerId };
+
+          // Notify prisoner
+          if (prisoner.socketId) {
+            io.to(prisoner.socketId).emit('private_message', '☠️ The Jailor has decided to execute you!');
+          }
+
+          // Send final message
+          const finalMsg = {
+            sender: 'Jailor',
+            message: `Your time has come. ${decision.reason || 'Justice will be served.'}`,
+            timestamp: Date.now()
+          };
+          this.jailChat.push(finalMsg);
+
+          if (jailor.socketId) {
+            io.to(jailor.socketId).emit('jail_chat_update', this.jailChat);
+          }
+          if (prisoner.socketId) {
+            io.to(prisoner.socketId).emit('jail_chat_update', this.jailChat);
+          }
+        } else {
+          // Spare the prisoner
+          const spareMsg = {
+            sender: 'Jailor',
+            message: `I'll let you go... for now. ${decision.reason || 'Stay out of trouble.'}`,
+            timestamp: Date.now()
+          };
+          this.jailChat.push(spareMsg);
+
+          if (jailor.socketId) {
+            io.to(jailor.socketId).emit('jail_chat_update', this.jailChat);
+          }
+          if (prisoner.socketId) {
+            io.to(prisoner.socketId).emit('jail_chat_update', this.jailChat);
+          }
+        }
+      } catch (err) {
+        console.error('[Game] NPC Jailor execution decision error:', err);
+      }
+    }, decisionDelay);
+  }
+
+  // Trigger NPC prisoner to respond to jailor
+  async triggerNPCPrisonerResponse(jailor, prisoner) {
+    if (!this.ai || this.state !== 'NIGHT' || !this.jailedPlayerId) return;
+
+    setTimeout(async () => {
+      if (this.state !== 'NIGHT' || !this.jailedPlayerId) return;
+
+      try {
+        const message = await this.ai.generateJailResponse(prisoner, this, this.jailChat, jailor.name);
+        if (message && this.state === 'NIGHT' && this.jailedPlayerId) {
+          const chatMsg = {
+            sender: 'Prisoner',
+            message: message.substring(0, 200),
+            timestamp: Date.now()
+          };
+          this.jailChat.push(chatMsg);
+
+          if (jailor.socketId) {
+            io.to(jailor.socketId).emit('jail_chat_update', this.jailChat);
+          }
+          if (prisoner.socketId) {
+            io.to(prisoner.socketId).emit('jail_chat_update', this.jailChat);
+          }
+
+          // Jailor NPC responds back (continue conversation)
+          if (jailor.isNPC && jailor.alive && this.jailChat.length < 8) {
+            setTimeout(async () => {
+              if (this.state !== 'NIGHT' || !this.jailedPlayerId) return;
+
+              const jailorReply = await this.ai.generateJailorMessage(jailor, this, this.jailChat, prisoner.name);
+              if (jailorReply && this.state === 'NIGHT' && this.jailedPlayerId) {
+                const replyMsg = {
+                  sender: 'Jailor',
+                  message: jailorReply.substring(0, 200),
+                  timestamp: Date.now()
+                };
+                this.jailChat.push(replyMsg);
+
+                if (jailor.socketId) {
+                  io.to(jailor.socketId).emit('jail_chat_update', this.jailChat);
+                }
+                if (prisoner.socketId) {
+                  io.to(prisoner.socketId).emit('jail_chat_update', this.jailChat);
+                }
+
+                // Continue if prisoner is NPC
+                if (prisoner.isNPC && prisoner.alive && this.jailChat.length < 8) {
+                  this.triggerNPCPrisonerResponse(jailor, prisoner);
+                }
+              }
+            }, Math.random() * 2000 + 1500);
+          }
+        }
+      } catch (err) {
+        console.error('[Game] NPC Prisoner response error:', err);
+      }
+    }, Math.random() * 2000 + 1000);
   }
 
   addPlayer(id, name, socketId) {
@@ -1603,6 +1775,51 @@ io.on('connection', (socket) => {
     }
     if (prisoner && prisoner.socketId) {
       io.to(prisoner.socketId).emit('jail_chat_update', game.jailChat);
+    }
+
+    // Trigger NPC response if the other party is an NPC
+    if (game.ai) {
+      const otherParty = isJailor ? prisoner : jailor;
+      if (otherParty && otherParty.isNPC && otherParty.alive) {
+        // Delay NPC response to feel natural
+        setTimeout(async () => {
+          if (game.state !== 'NIGHT' || !game.jailedPlayerId) return;
+
+          try {
+            let npcMessage;
+            if (isJailor) {
+              // Jailor sent message, prisoner NPC responds
+              npcMessage = await game.ai.generateJailResponse(
+                otherParty, game, game.jailChat, jailor.name
+              );
+            } else {
+              // Prisoner sent message, jailor NPC responds
+              npcMessage = await game.ai.generateJailorMessage(
+                otherParty, game, game.jailChat, prisoner.name
+              );
+            }
+
+            if (npcMessage && game.state === 'NIGHT' && game.jailedPlayerId) {
+              const npcChatMessage = {
+                sender: isJailor ? 'Prisoner' : 'Jailor',
+                message: npcMessage.substring(0, 200),
+                timestamp: Date.now()
+              };
+              game.jailChat.push(npcChatMessage);
+
+              // Send updated chat to both parties
+              if (jailor && jailor.socketId) {
+                io.to(jailor.socketId).emit('jail_chat_update', game.jailChat);
+              }
+              if (prisoner && prisoner.socketId) {
+                io.to(prisoner.socketId).emit('jail_chat_update', game.jailChat);
+              }
+            }
+          } catch (err) {
+            console.error('[Game] NPC jail chat error:', err);
+          }
+        }, Math.random() * 2000 + 1000); // 1-3 second delay
+      }
     }
   });
 
