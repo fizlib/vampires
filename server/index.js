@@ -81,7 +81,7 @@ class Game {
     this.framedPlayers = {};
     // Game chat state
     this.gameChat = [];
-    this.aiVoteIntents = {}; // Stores preliminary vote decisions during discussion
+
     this.npcChatCooldowns = {}; // Tracks last message time per NPC to prevent spam
     this.NPC_CHAT_COOLDOWN_MS = 5000; // 5 second cooldown between NPC messages
 
@@ -197,19 +197,13 @@ class Game {
       };
 
       for (const npc of npcPlayers) {
-        // 1. Initial Vote
-        const intent = this.aiVoteIntents[npc.id];
-        // Quicker vote if they have intent
-        const initialDelay = intent ? Math.random() * 2000 + 500 : Math.random() * 4000 + 2000;
+        // Initial Vote
+        const initialDelay = Math.random() * 4000 + 2000;
 
         setTimeout(async () => {
           if (!npc.alive || this.state !== 'DAY_VOTE') return;
-          let decisionName = intent;
-          if (!decisionName) {
-            const res = await this.ai.generateDayVote(npc, this);
-            decisionName = res.vote;
-          }
-          handleVote(npc, decisionName);
+          const res = await this.ai.generateDayVote(npc, this);
+          handleVote(npc, res.vote);
         }, initialDelay);
 
         // 2. Re-evaluation
@@ -238,27 +232,6 @@ class Game {
         }, Math.random() * 3000 + 2000);
       }
 
-      // Start intent loop for each NPC to form opinions during discussion
-      for (const npc of npcPlayers) {
-        const intentLoop = () => {
-          if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
-          // Delay 10-20 seconds
-          const delay = Math.random() * 10000 + 10000;
-          setTimeout(async () => {
-            if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
-            try {
-              const decision = await this.ai.generateVoteIntent(npc, this);
-              if (decision.vote) {
-                this.aiVoteIntents[npc.id] = decision.vote;
-              }
-            } catch (err) {
-              console.error(err);
-            }
-            intentLoop();
-          }, delay);
-        };
-        intentLoop();
-      }
     }
   }
 
@@ -1049,7 +1022,6 @@ class Game {
 
     // Clear game chat for new day
     this.gameChat = [];
-    this.aiVoteIntents = {}; // Reset vote intents for new day
 
     this.broadcastUpdate();
     this.startTimer(this.settings.discussionTime, () => this.startDayVote());

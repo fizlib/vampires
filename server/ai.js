@@ -60,26 +60,6 @@ class AIController {
         }
     }
 
-    async generateVoteIntent(player, gameState) {
-        console.log(`[AI] Generating Vote Intent for ${player.name}...`);
-        const prompt = this.getSystemPrompt(player, gameState) +
-            `\nIt is currently DAY DISCUSSION. You are listening to the conversation.
-      Who are you most suspicious of right now?
-      Respond with a JSON object: { "vote": "PlayerName" } or { "vote": null } if unsure.
-      Do not include markdown formatting, just raw JSON.`;
-
-        try {
-            const result = await this.model.generateContent(prompt);
-            const text = result.response.text();
-            const decision = this.parseJSON(text);
-            console.log(`[AI] Vote Intent for ${player.name}:`, JSON.stringify(decision));
-            return decision;
-        } catch (error) {
-            console.error("AI Vote Intent Error:", error);
-            return { vote: null };
-        }
-    }
-
     async generateUpdatedVote(player, gameState, currentVoteName) {
         console.log(`[AI] Re-evaluating Vote for ${player.name} (Currently voting: ${currentVoteName})...`);
         const prompt = this.getSystemPrompt(player, gameState) +
