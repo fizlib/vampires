@@ -247,18 +247,23 @@ function getSystemPrompt(player, gameState) {
     const roleInfo = roleCatalog[player.role];
     const roleTip = roleInfo ? `\n    Role tip: ${roleInfo.tip}` : '';
 
-    // Build action history context - CRITICAL for AI to remember what it did
+    // Build action history context - CRITICAL for AI to remember what it did AND the results
     let actionHistoryContext = "";
     if (player.actionHistory && player.actionHistory.length > 0) {
-        const historyLines = player.actionHistory.map(h =>
-            `- Night ${h.round}: You performed ${h.action} on ${h.targetName}`
-        ).join('\n');
+        const historyLines = player.actionHistory.map(h => {
+            let line = `- Night ${h.round}: You performed ${h.action} on ${h.targetName}`;
+            if (h.result) {
+                line += ` → RESULT: ${h.result}`;
+            }
+            return line;
+        }).join('\n');
         actionHistoryContext = `
     
-    **YOUR PAST ACTIONS (IMPORTANT - this is what YOU actually did):**
+    **YOUR PAST ACTIONS AND RESULTS (CRITICAL - this is what YOU did and discovered):**
     ${historyLines}
     
-    CRITICAL: Only claim actions that appear in YOUR PAST ACTIONS above. Do NOT make up or claim actions you didn't perform.`;
+    IMPORTANT: Use the RESULTS from your actions above when discussing the game. If you're a Lookout and saw visitors, share that info. If you're an Investigator and found a role, share that info (from Day 2 onwards).
+    CRITICAL: Only claim actions and results that appear above. Do NOT make up or claim actions/results you didn't perform/receive.`;
     }
 
     return `You are playing a game of social deduction (like Mafia/Werewolf).

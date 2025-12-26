@@ -1006,10 +1006,21 @@ class Game {
       }
     });
 
-    // Send private results
+    // Send private results and store in NPC's actionHistory
     Object.keys(investigationResults).forEach(pId => {
       const player = this.players.find(p => p.id === pId);
-      if (player) io.to(player.socketId).emit('private_message', investigationResults[pId]);
+      if (player) {
+        io.to(player.socketId).emit('private_message', investigationResults[pId]);
+
+        // Store result in NPC's actionHistory so they can remember what they discovered
+        if (player.isNPC && player.actionHistory && player.actionHistory.length > 0) {
+          // Find the most recent action for this round and add the result
+          const lastAction = player.actionHistory[player.actionHistory.length - 1];
+          if (lastAction.round === this.round && !lastAction.result) {
+            lastAction.result = investigationResults[pId];
+          }
+        }
+      }
     });
 
     // Notify turned player and send updated role info
