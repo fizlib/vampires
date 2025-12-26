@@ -2085,6 +2085,23 @@ button:active {
   color: #1a1a2e;
 }
 
+/* ====== Voice-Only Panel (when chat is disabled but voice is enabled) ====== */
+.voice-only-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.voice-only-panel h4 {
+  margin: 0 0 10px 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 /* ====== Game Chat Panel Styles ====== */
 .chat-panel {
   background: var(--panel-bg);
@@ -2526,4 +2543,77 @@ button:active {
   background: linear-gradient(90deg, #00b894, #00cec9, #74b9ff);
   border-radius: 4px;
   transition: width 0.05s ease-out;
+}
+
+/* VAD Status Indicator (Always-on mode) */
+.vad-status-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 184, 148, 0.4);
+}
+
+.vad-status-text {
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  animation: vadPulse 2s ease-in-out infinite;
+}
+
+@keyframes vadPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+
+/* NPC Allowed Roles Grid */
+.npc-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+  margin-top: 8px;
+}
+
+.npc-role-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.npc-role-checkbox:hover {
+  background: var(--card-bg);
+  border-color: var(--secondary);
+}
+
+.npc-role-checkbox input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--secondary);
+}
+
+.npc-role-checkbox .role-name {
+  font-size: 0.85rem;
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+  background: none;
 }

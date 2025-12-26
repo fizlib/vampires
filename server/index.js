@@ -82,6 +82,8 @@ class Game {
     // Game chat state
     this.gameChat = [];
     this.aiVoteIntents = {}; // Stores preliminary vote decisions during discussion
+    this.npcChatCooldowns = {}; // Tracks last message time per NPC to prevent spam
+    this.NPC_CHAT_COOLDOWN_MS = 5000; // 5 second cooldown between NPC messages
 
     // AI Controller
     if (this.settings.enableAI && GEMINI_API_KEY) {
@@ -242,13 +244,24 @@ class Game {
   }
 
   // Helper method to trigger a single NPC chat response
-  async triggerNPCChatResponse(npc) {
+  async triggerNPCChatResponse(npc, isAddressed = false) {
     if (!this.ai || this.state !== 'DAY_DISCUSS' || !npc.alive) return;
 
+    // Check cooldown to prevent spam (ignored if directly addressed)
+    const now = Date.now();
+    const lastMessageTime = this.npcChatCooldowns[npc.id] || 0;
+    if (!isAddressed && (now - lastMessageTime < this.NPC_CHAT_COOLDOWN_MS)) {
+      console.log(`[Game] NPC ${npc.name} is on cooldown, skipping chat response`);
+      return;
+    }
+
     try {
-      const message = await this.ai.generateChat(npc, this);
+      const message = await this.ai.generateChat(npc, this, isAddressed);
 
       if (message && message !== 'SILENCE' && this.state === 'DAY_DISCUSS') {
+        // Update cooldown timestamp
+        this.npcChatCooldowns[npc.id] = Date.now();
+
         const chatMsg = {
           senderId: npc.id,
           senderName: npc.name,
@@ -301,7 +314,7 @@ class Game {
   }
 
   // Trigger NPC responses when a new non-NPC message arrives
-  onNewChatMessage(senderId) {
+  onNewChatMessage(senderId, messageContent) {
     if (!this.ai || this.state !== 'DAY_DISCUSS') return;
 
     const sender = this.players.find(p => p.id === senderId);
@@ -314,20 +327,41 @@ class Game {
     const npcPlayers = this.players.filter(p => p.isNPC && p.alive);
     if (npcPlayers.length === 0) return;
 
-    // Pick 1-2 random NPCs to respond (not all at once to avoid spam)
-    const numResponders = Math.min(npcPlayers.length, Math.ceil(Math.random() * 2));
-    const shuffled = npcPlayers.sort(() => Math.random() - 0.5);
-    const respondingNpcs = shuffled.slice(0, numResponders);
+    // Determine which NPCs are addressed directly
+    const mentionedNpcs = [];
+    const otherNpcs = [];
 
-    // Trigger responses with staggered delays
-    respondingNpcs.forEach((npc, index) => {
-      const delay = (index + 1) * (Math.random() * 2000 + 1500); // 1.5-3.5s staggered delay
+    // Normalize message for case-insensitive check
+    const lowerMsg = (messageContent || "").toLowerCase();
+
+    npcPlayers.forEach(npc => {
+      if (lowerMsg.includes(npc.name.toLowerCase())) {
+        mentionedNpcs.push(npc);
+      } else {
+        otherNpcs.push(npc);
+      }
+    });
+
+    // 1. Addressed NPCs respond almost immediately
+    mentionedNpcs.forEach((npc, index) => {
+      const delay = (index + 1) * (Math.random() * 1000 + 500);
       setTimeout(async () => {
         if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
-        // Only respond if this NPC hasn't already responded since the last non-NPC message
-        if (!this.npcRespondedSinceLastMessage.has(npc.id)) {
-          await this.triggerNPCChatResponse(npc);
-        }
+        await this.triggerNPCChatResponse(npc, true); // true = addressed
+      }, delay);
+    });
+
+    // 2. Others respond with lower probability (e.g. 20%) unless they have info
+    // We trigger them, but with isAddressed=false, AI will decide to be SILENT mostly.
+    const numResponders = Math.ceil(otherNpcs.length * 0.3); // Let ~30% of others *consider* responding
+    const shuffledOthers = otherNpcs.sort(() => Math.random() - 0.5).slice(0, numResponders);
+
+    shuffledOthers.forEach((npc, index) => {
+      const delay = (mentionedNpcs.length * 1000) + (index + 1) * (Math.random() * 2000 + 1500);
+      setTimeout(async () => {
+        if (this.state !== 'DAY_DISCUSS' || !npc.alive) return;
+        // Don't respond if handled above (though arrays are disjoint here)
+        await this.triggerNPCChatResponse(npc, false);
       }, delay);
     });
   }
@@ -356,6 +390,7 @@ class Game {
     let personality = null;
     let talkingStyle = null;
     let gender = null;
+    let background = null;
 
     // Try to get AI generated profile
     if (this.ai) {
@@ -366,6 +401,7 @@ class Game {
         personality = profile.personality;
         talkingStyle = profile.talkingStyle;
         gender = profile.gender || null;
+        background = profile.background || null;
       }
     }
 
@@ -376,7 +412,8 @@ class Game {
       isNPC: true,
       personality,
       talkingStyle,
-      gender
+      gender,
+      background
     };
     this.players.push(npcPlayer);
     return npcPlayer;
@@ -434,9 +471,63 @@ class Game {
         pool.push({ role: 'Citizen', align: roleAlignments['Citizen'] });
       }
 
-      // If we have more roles than players, trim the pool
+      // If we have more roles than players, smart exclusion to ensure game balance
       if (pool.length > total) {
-        pool = shuffle(pool).slice(0, total);
+        const excessCount = pool.length - total;
+
+        // Separate roles by alignment
+        const evilRoles = pool.filter(r => r.align === 'evil');
+        const goodRoles = pool.filter(r => r.align === 'good');
+        const neutralRoles = pool.filter(r => r.align === 'neutral');
+
+        // Calculate requirements:
+        // 1. At least 1 vampire (evil) must remain
+        // 2. Good players must be majority (more than half)
+        const minEvil = 1;
+        const minGood = Math.floor(total / 2) + 1; // Majority requirement
+
+        let rolesToExclude = [];
+
+        // First, calculate how many of each type we can afford to remove
+        let maxEvilToRemove = Math.max(0, evilRoles.length - minEvil);
+        let maxGoodToRemove = Math.max(0, goodRoles.length - minGood);
+        let maxNeutralToRemove = neutralRoles.length; // Can remove all neutral if needed
+
+        // Prioritize removing excess roles while maintaining balance
+        // Strategy: Try to maintain good majority, so prefer removing evil/neutral over good
+        let remaining = excessCount;
+
+        // 1. Remove excess evil roles (beyond the minimum 1)
+        const evilToRemove = Math.min(remaining, maxEvilToRemove);
+        rolesToExclude.push(...shuffle(evilRoles).slice(0, evilToRemove));
+        remaining -= evilToRemove;
+
+        // 2. Remove neutral roles
+        if (remaining > 0) {
+          const neutralToRemove = Math.min(remaining, maxNeutralToRemove);
+          rolesToExclude.push(...shuffle(neutralRoles).slice(0, neutralToRemove));
+          remaining -= neutralToRemove;
+        }
+
+        // 3. Remove excess good roles if still needed (maintaining majority)
+        if (remaining > 0) {
+          const goodToRemove = Math.min(remaining, maxGoodToRemove);
+          rolesToExclude.push(...shuffle(goodRoles).slice(0, goodToRemove));
+          remaining -= goodToRemove;
+        }
+
+        // 4. If we still have excess, we have to remove more (game might be unbalanced)
+        // This happens when user configured an impossible setup
+        if (remaining > 0) {
+          const remainingPool = pool.filter(r => !rolesToExclude.includes(r));
+          const additionalToRemove = shuffle(remainingPool).slice(0, remaining);
+          rolesToExclude.push(...additionalToRemove);
+        }
+
+        // Remove the excluded roles from pool
+        pool = pool.filter(r => !rolesToExclude.includes(r));
+
+        console.log(`[Game] Smart role exclusion: removed ${excessCount} roles while maintaining game balance`);
       }
     } else {
       // Default calculation based on percentages
@@ -466,6 +557,74 @@ class Game {
         p.healsRemaining = 3;
       } else {
         delete p.healsRemaining;
+      }
+    });
+
+    // Check NPC allowed roles setting and reassign disallowed roles
+    const npcAllowedRoles = this.settings.npcAllowedRoles || {};
+    const allRolesAllowed = Object.keys(npcAllowedRoles).length === 0 ||
+      Object.values(npcAllowedRoles).every(v => v !== false);
+
+    if (!allRolesAllowed) {
+      const npcs = this.players.filter(p => p.isNPC);
+      const humans = this.players.filter(p => !p.isNPC);
+
+      for (const npc of npcs) {
+        // Check if NPC's role is disallowed
+        if (npcAllowedRoles[npc.role] === false) {
+          // Try to swap with a human who has an allowed role
+          let swapped = false;
+          for (const human of humans) {
+            // Check if human's role is allowed for NPCs
+            if (npcAllowedRoles[human.role] !== false) {
+              // Swap roles
+              const tempRole = npc.role;
+              const tempAlign = npc.alignment;
+              const tempHeals = npc.healsRemaining;
+
+              npc.role = human.role;
+              npc.alignment = human.alignment;
+              npc.healsRemaining = human.healsRemaining;
+
+              human.role = tempRole;
+              human.alignment = tempAlign;
+              human.healsRemaining = tempHeals;
+
+              // Handle Doctor heals
+              if (npc.role === 'Doctor') {
+                npc.healsRemaining = 3;
+              } else {
+                delete npc.healsRemaining;
+              }
+              if (human.role === 'Doctor') {
+                human.healsRemaining = 3;
+              } else {
+                delete human.healsRemaining;
+              }
+
+              swapped = true;
+              break;
+            }
+          }
+
+          // If no swap possible, assign NPC to Citizen (fallback)
+          if (!swapped) {
+            npc.role = 'Citizen';
+            npc.alignment = roleAlignments['Citizen'];
+            delete npc.healsRemaining;
+          }
+        }
+      }
+    }
+
+    // Assign fake roles to Evil NPCs
+    const goodRoles = ['Citizen', 'Doctor', 'Investigator', 'Lookout'];
+    this.players.forEach(p => {
+      if (p.isNPC && (p.alignment === 'evil' || p.role === 'Jester')) {
+        // Pick a random good role to pretend to be
+        const fakeRole = goodRoles[Math.floor(Math.random() * goodRoles.length)];
+        p.fakeRole = fakeRole;
+        console.log(`[Game] Assigned fake role ${fakeRole} to evil NPC ${p.name} (${p.role})`);
       }
     });
   }
@@ -843,6 +1002,8 @@ class Game {
       winner: this.winner,
       logs: this.logs,
       chatEnabled: this.settings.chatEnabled !== false,
+      enableSTT: this.settings.enableSTT || false,
+      voiceInputMode: this.settings.voiceInputMode || 'push-to-talk',
       gameChat: this.gameChat
     };
 
@@ -1450,7 +1611,7 @@ io.on('connection', (socket) => {
     const game = games[code];
     if (!game) return;
     if (game.state === 'LOBBY' || game.state === 'GAME_OVER') return;
-    if (game.settings.chatEnabled === false) return;
+    // Chat still works when disabled - it's just hidden from players on the client side
 
     const player = game.players.find(p => p.socketId === socket.id);
     if (!player || !player.alive) return;
@@ -1473,7 +1634,7 @@ io.on('connection', (socket) => {
     game.gameChat.push(chatMessage);
 
     // Trigger NPC responses to this message (during day discussion)
-    game.onNewChatMessage(player.id);
+    game.onNewChatMessage(player.id, message);
 
     // Day: broadcast to all players. Night: only to vampires
     if (isDayPhase) {
@@ -1500,7 +1661,7 @@ io.on('connection', (socket) => {
 
     // Only allow during DAY_DISCUSS phase
     if (game.state !== 'DAY_DISCUSS') return;
-    if (game.settings.chatEnabled === false) return;
+    // Voice chat still works when chat is disabled - it's just hidden from players on the client side
 
     const player = game.players.find(p => p.socketId === socket.id);
     if (!player || !player.alive) return;
@@ -1512,7 +1673,6 @@ io.on('connection', (socket) => {
     }
 
     try {
-      console.log(`[STT] Processing voice input from ${player.name}...`);
 
       const transcript = await game.stt.recognizeStream(
         audioChunk,
@@ -1532,14 +1692,13 @@ io.on('connection', (socket) => {
         game.gameChat.push(chatMessage);
 
         // Broadcast to all players
-        game.players.forEach(p => {
-          if (p.socketId) {
-            io.to(p.socketId).emit('chat_update', game.gameChat);
-          }
-        });
+        io.to(code).emit('chat_update', game.gameChat);
 
-        // Trigger NPC responses to this voice message
-        game.onNewChatMessage(player.id);
+        // Trigger NPC responses to this message
+        // Trigger NPC responses to this message
+        game.onNewChatMessage(player.id, transcript);
+
+
 
         console.log(`[STT] Voice message from ${player.name}: "${transcript}"`);
       } else {

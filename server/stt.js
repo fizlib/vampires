@@ -61,7 +61,12 @@ class GoogleSTTController {
             const audioBuffer = Buffer.from(audioBase64, 'base64');
 
             // Map language setting to Google language codes
-            const languageCode = language === 'russian' ? 'ru-RU' : 'en-US';
+            const languageCodeMap = {
+                'russian': 'ru-RU',
+                'lithuanian': 'lt-LT',
+                'english': 'en-US'
+            };
+            const languageCode = languageCodeMap[language] || 'en-US';
 
             console.log(`[STT] Transcribing audio (${language}, ${audioBuffer.length} bytes)...`);
 

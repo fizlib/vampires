@@ -397,10 +397,8 @@ function App() {
       sttAvailable;
 
     if (shouldAutoStartVAD && !isListening) {
-      console.log('[VAD] Auto-starting voice activity detection');
       startVADListening();
     } else if (!isDayDiscuss && isListening) {
-      console.log('[VAD] Auto-stopping voice activity detection (left DAY_DISCUSS)');
       stopVADListening();
     }
 
@@ -803,10 +801,11 @@ function App() {
       let isCurrentlyRecording = false;
       let audioChunks = [];
       let mediaRecorder = null;
+      let cooldownUntil = 0; // Timestamp until which new recordings are blocked
 
-      const SILENCE_THRESHOLD = 15; // Audio level threshold
-      const SILENCE_DURATION = 1500; // ms of silence before stopping recording
-      const MIN_RECORDING_DURATION = 500; // Minimum recording duration in ms
+      const SILENCE_THRESHOLD = 25; // Audio level threshold
+      const SILENCE_DURATION = 800; // ms of silence before stopping recording
+      const COOLDOWN_DURATION = 1000; // ms to wait after sending before allowing new recording
 
       const checkAudioLevel = () => {
         if (!analyserRef.current) return;
@@ -815,6 +814,8 @@ function App() {
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
         setAudioLevel(Math.min(100, average * 2)); // Scale for visual indicator
 
+        const now = Date.now();
+
         if (average > SILENCE_THRESHOLD) {
           // Voice detected
           if (silenceTimeoutRef.current) {
@@ -822,7 +823,8 @@ function App() {
             silenceTimeoutRef.current = null;
           }
 
-          if (!isCurrentlyRecording) {
+          // Only start recording if not in cooldown period
+          if (!isCurrentlyRecording && now >= cooldownUntil) {
             // Start recording
             isCurrentlyRecording = true;
             audioChunks = [];
@@ -842,6 +844,8 @@ function App() {
                 reader.onloadend = () => {
                   const base64Audio = reader.result.split(',')[1];
                   socket.emit('voice_audio_chunk', { code, audioChunk: base64Audio });
+                  // Set cooldown to prevent immediate re-recording
+                  cooldownUntil = Date.now() + COOLDOWN_DURATION;
                 };
                 reader.readAsDataURL(audioBlob);
               }
@@ -1869,6 +1873,42 @@ function App() {
         </div>
 
         <div className="sidebar">
+          {/* Voice-Only Panel - shows when chat is disabled but voice is enabled */}
+          {!gameState?.chatEnabled && gameState?.state === 'DAY_DISCUSS' && gameState?.enableSTT && sttAvailable && (() => {
+            const myPlayer = gameState?.players.find(p => p.id === myId);
+            if (!myPlayer?.alive) return null;
+
+            return (
+              <div className="panel voice-only-panel">
+                <h4>🎤 Voice Chat</h4>
+                {gameState.voiceInputMode === 'voice-activity' ? (
+                  <div className="voice-vad-container">
+                    <div className="vad-status-indicator">
+                      <div className="vad-status-text">
+                        {isRecording ? '🔴 Speaking...' : '🎤 Listening...'}
+                      </div>
+                      <div className="audio-level-bar">
+                        <div className="audio-level-fill" style={{ width: `${audioLevel}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    className={`voice-btn ${isRecording ? 'recording' : ''}`}
+                    onMouseDown={startVoiceRecording}
+                    onMouseUp={stopVoiceRecording}
+                    onMouseLeave={() => isRecording && stopVoiceRecording()}
+                    onTouchStart={startVoiceRecording}
+                    onTouchEnd={stopVoiceRecording}
+                    title="Hold to speak"
+                  >
+                    {isRecording ? '🔴 Recording...' : '🎤 Hold to Speak'}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Chat Panel - only show if chat is enabled and (day phase OR vampire at night) */}
           {gameState?.chatEnabled && (() => {
             const isNight = gameState?.state === 'NIGHT';

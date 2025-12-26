@@ -1,10 +1,15 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { getSystemPrompt, getGoal } = require("./npc-system-prompt");
 
 class AIController {
     constructor(apiKey, nationality = 'english') {
         this.genAI = new GoogleGenerativeAI(apiKey);
         this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         this.nationality = nationality;
+    }
+
+    getSystemPrompt(player, gameState) {
+        return getSystemPrompt(player, gameState);
     }
 
     async generateNightAction(player, gameState) {
@@ -101,7 +106,7 @@ class AIController {
         }
     }
 
-    async generateChat(player, gameState) {
+    async generateChat(player, gameState, isAddressed = false) {
         console.log(`[AI] Generating Chat for ${player.name}...`);
 
         // Get last 10 chat messages
@@ -117,6 +122,8 @@ class AIController {
       
       Recent Chat History:
       ${recentChats || "(No chat history yet)"}
+      
+      ${isAddressed ? "You have been DIRECTLY ADDRESSED. You MUST respond clearly." : "You have NOT been directly addressed. Only respond if you have CRITICAL information (like night results) or a strong strategic reason. If not, respond with 'SILENCE'."}
       
       Respond with a short, in-character chat message.
       - React to what others are saying in the Recent Chat History.
@@ -163,12 +170,20 @@ class AIController {
         
         ${nameInstruction}
         
+        The personality should be **strategic and game-focused**.
+        The talking style MUST be **clear, concise, and direct**.
+        Do NOT generate "stuttering", "shouting", "cryptic", or "whispering" styles.
+        The goal is to be easily understood by other players.
+
+        Include a short **background story** (1 sentence) that explains who they are (e.g., "A focused detective," "A calm doctor").
+
         Respond with a JSON object: 
         { 
             "name": "A unique realistic first name only. Must NOT be in the excluded list.", 
             "gender": "male or female - based on the generated name",
-            "personality": "A brief description of their personality (e.g., paranoid, aggressive, analytical, quiet)",
-            "talkingStyle": "A brief description of how they talk (e.g., uses lots of slang, formal, stutters, shouts, speaks in riddles)"
+            "personality": "A brief description of their personality (e.g., 'Analytical and direct', 'Calm and persuasive')",
+            "talkingStyle": "A brief description of how they talk (e.g., 'Clear and to the point', 'Polite but firm')",
+            "background": "A short 1-sentence background story."
         }
         Do not include markdown formatting, just raw JSON.`;
 
@@ -188,45 +203,7 @@ class AIController {
         }
     }
 
-    getSystemPrompt(player, gameState) {
-        const livingPlayers = gameState.players.filter(p => p.alive).map(p => p.name).join(", ");
-        const recentLogs = gameState.logs.slice(-5).join("\n");
-
-        let personalityContext = "";
-        if (player.personality && player.talkingStyle) {
-            personalityContext = `
-    Your personality: ${player.personality}
-    Your talking style: ${player.talkingStyle}
-    Adopt this persona in your chat messages and voting patterns.`;
-        }
-
-        return `You are playing a game of social deduction (like Mafia/Werewolf).
-    Your name is ${player.name}.
-    Your role is ${player.role}.
-    Your alignment is ${player.alignment}.
-    Your objective: ${this.getGoal(player.role)}
-    ${personalityContext}
-    
-    Living players: ${livingPlayers}
-    Recent events:
-    ${recentLogs}
-    
-    Act according to your role. Be strategic.`;
-    }
-
-    getGoal(role) {
-        const goals = {
-            'Investigator': 'Find the vampires.',
-            'Lookout': 'Watch for suspicious visits.',
-            'Doctor': 'Save innocents from vampires.',
-            'Jailor': 'Jail and execute the guilty.',
-            'Citizen': 'Vote out the vampires.',
-            'Vampire': 'Kill all non-vampires. Coordinate with other vampires.',
-            'Vampire Framer': 'Frame innocents and help vampires kill.',
-            'Jester': 'Get yourself lynched by vote.'
-        };
-        return goals[role] || 'Survive.';
-    }
 }
 
 module.exports = AIController;
+
