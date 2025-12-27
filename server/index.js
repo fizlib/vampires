@@ -10,14 +10,30 @@ const AIController = require('./ai');
 const GoogleTTSController = require('./tts');
 const ElevenLabsTTSController = require('./elevenlabs-tts');
 const GoogleSTTController = require('./stt');
+const DeepgramSTTController = require('./deepgram-stt');
 const GameLogger = require('./game-logger');
 
 // Initialize TTS controllers (singletons) if credentials are available
 const googleTTSController = new GoogleTTSController();
 const elevenLabsTTSController = new ElevenLabsTTSController();
 
-// Initialize STT controller (singleton)
+// Initialize STT controllers (singletons)
 const googleSTTController = new GoogleSTTController();
+const deepgramSTTController = new DeepgramSTTController();
+
+// Helper to get the appropriate STT controller based on settings
+// Deepgram NOVA-3 is the default, falls back to Google if unavailable
+function getSTTController(sttProvider) {
+  if (sttProvider === 'google') {
+    return googleSTTController.isAvailable() ? googleSTTController : null;
+  }
+  // Default to Deepgram NOVA-3
+  if (deepgramSTTController.isAvailable()) {
+    return deepgramSTTController;
+  }
+  // Fallback to Google if Deepgram not available
+  return googleSTTController.isAvailable() ? googleSTTController : null;
+}
 
 // Helper to get the appropriate TTS controller based on settings
 function getTTSController(ttsProvider) {
@@ -108,8 +124,8 @@ class Game {
     // TTS Controller reference (uses global helper to select provider)
     this.tts = this.settings.enableTTS ? getTTSController(this.settings.ttsProvider) : null;
 
-    // STT Controller reference
-    this.stt = this.settings.enableSTT ? googleSTTController : null;
+    // STT Controller reference (uses global helper to select provider - defaults to Deepgram NOVA-3)
+    this.stt = this.settings.enableSTT ? getSTTController(this.settings.sttProvider) : null;
 
     // Game Logger - captures console output and NPC context
     this.logger = new GameLogger(code);

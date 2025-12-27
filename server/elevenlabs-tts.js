@@ -32,7 +32,14 @@ class ElevenLabsTTSController {
         this.client = null;
         this.enabled = false;
         this.npcVoices = {}; // Store assigned voice per NPC for consistency
-        this.apiKey = process.env.ELEVENLABS_API_KEY || '';
+
+        // Primary and backup API keys
+        this.apiKeys = [
+            process.env.ELEVENLABS_API_KEY || '',
+            process.env.ELEVENLABS_API_KEY2 || ''
+        ].filter(key => key.length > 0);
+        this.currentKeyIndex = 0;
+        this.apiKey = this.apiKeys[0] || '';
 
         // Initialize if API key is available
         this.initialize();
@@ -49,11 +56,60 @@ class ElevenLabsTTSController {
             const { ElevenLabsClient } = await import('@elevenlabs/elevenlabs-js');
             this.client = new ElevenLabsClient({ apiKey: this.apiKey });
             this.enabled = true;
-            console.log('[ElevenLabs] Text-to-Speech initialized successfully');
+            console.log(`[ElevenLabs] Text-to-Speech initialized successfully (using key ${this.currentKeyIndex + 1} of ${this.apiKeys.length})`);
         } catch (error) {
             console.error('[ElevenLabs] Failed to initialize:', error.message);
             this.enabled = false;
         }
+    }
+
+    /**
+     * Switch to the next available API key
+     * @returns {boolean} True if switched successfully, false if no more keys available
+     */
+    async switchToNextKey() {
+        if (this.currentKeyIndex + 1 >= this.apiKeys.length) {
+            console.log('[ElevenLabs] No more backup API keys available');
+            return false;
+        }
+
+        this.currentKeyIndex++;
+        this.apiKey = this.apiKeys[this.currentKeyIndex];
+        console.log(`[ElevenLabs] Switching to backup API key ${this.currentKeyIndex + 1} of ${this.apiKeys.length}`);
+
+        try {
+            const { ElevenLabsClient } = await import('@elevenlabs/elevenlabs-js');
+            this.client = new ElevenLabsClient({ apiKey: this.apiKey });
+            console.log('[ElevenLabs] Successfully switched to backup API key');
+            return true;
+        } catch (error) {
+            console.error('[ElevenLabs] Failed to initialize backup key:', error.message);
+            this.enabled = false;
+            return false;
+        }
+    }
+
+    /**
+     * Check if an error indicates the API key has run out of credits
+     * @param {Error} error - The error to check
+     * @returns {boolean} True if the error is a quota/credits exhausted error
+     */
+    isQuotaExhaustedError(error) {
+        const errorMessage = error.message?.toLowerCase() || '';
+        const errorStatus = error.status || error.statusCode;
+
+        // Check for common quota exhaustion indicators
+        return (
+            errorStatus === 401 || // Unauthorized (sometimes used for quota)
+            errorStatus === 402 || // Payment Required
+            errorStatus === 429 || // Rate limit / quota exceeded
+            errorMessage.includes('quota') ||
+            errorMessage.includes('credit') ||
+            errorMessage.includes('limit') ||
+            errorMessage.includes('exceeded') ||
+            errorMessage.includes('insufficient') ||
+            errorMessage.includes('subscription')
+        );
     }
 
     /**
@@ -128,37 +184,58 @@ class ElevenLabsTTSController {
             return null;
         }
 
-        try {
-            const voice = this.getVoiceForNPC(npcId, options.voiceId, options.gender);
-            const modelId = options.modelId || 'eleven_turbo_v2_5';
+        const voice = this.getVoiceForNPC(npcId, options.voiceId, options.gender);
+        const modelId = options.modelId || 'eleven_flash_v2_5';
 
-            console.log(`[ElevenLabs] Synthesizing with model ${modelId}, voice ${voice.name}: "${text.substring(0, 50)}..."`);
+        // Try synthesis with current key, switch to backup if quota exhausted
+        let attempts = 0;
+        const maxAttempts = this.apiKeys.length;
 
-            const audioStream = await this.client.textToSpeech.convert(voice.id, {
-                text: text,
-                modelId: modelId,
-                outputFormat: 'mp3_44100_128'
-            });
+        while (attempts < maxAttempts) {
+            try {
+                console.log(`[ElevenLabs] Synthesizing with model ${modelId}, voice ${voice.name}: "${text.substring(0, 50)}..."`);
 
-            // Convert Web ReadableStream to buffer then to base64
-            const chunks = [];
-            const reader = audioStream.getReader();
+                const audioStream = await this.client.textToSpeech.convert(voice.id, {
+                    text: text,
+                    modelId: modelId,
+                    outputFormat: 'mp3_44100_128'
+                });
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
+                // Convert Web ReadableStream to buffer then to base64
+                const chunks = [];
+                const reader = audioStream.getReader();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                }
+
+                const audioBuffer = Buffer.concat(chunks);
+                const audioBase64 = audioBuffer.toString('base64');
+
+                console.log(`[ElevenLabs] Successfully generated ${audioBase64.length} bytes of audio`);
+                return audioBase64;
+            } catch (error) {
+                console.error('[ElevenLabs] Speech synthesis failed:', error.message);
+
+                // Check if this is a quota/credits exhausted error
+                if (this.isQuotaExhaustedError(error)) {
+                    console.log('[ElevenLabs] API key appears to be out of credits, attempting to switch...');
+                    const switched = await this.switchToNextKey();
+                    if (switched) {
+                        attempts++;
+                        continue; // Retry with new key
+                    }
+                }
+
+                // Non-quota error or no more keys available
+                return null;
             }
-
-            const audioBuffer = Buffer.concat(chunks);
-            const audioBase64 = audioBuffer.toString('base64');
-
-            console.log(`[ElevenLabs] Successfully generated ${audioBase64.length} bytes of audio`);
-            return audioBase64;
-        } catch (error) {
-            console.error('[ElevenLabs] Speech synthesis failed:', error.message);
-            return null;
         }
+
+        console.error('[ElevenLabs] All API keys exhausted or failed');
+        return null;
     }
 
     /**

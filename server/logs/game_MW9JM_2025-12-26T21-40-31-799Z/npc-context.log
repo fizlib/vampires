@@ -1,0 +1,109 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: MW9JM
+Start Time: 2025-12-26T21:40:31.799Z
+End Time: 2025-12-26T21:52:17.483Z
+Total NPCs: 5
+
+========================================
+NPC: Sarah
+========================================
+Role: Vampire (evil)
+Status: Alive (Turned to Vampire)
+Personality: Generally trusting and moderately talkative, Sarah leans intuitive in her deductions and is somewhat laid-back unless directly targeted.
+Talking Style: Speaks clearly and conversationally, using moderate sentence length. Tends to be polite and direct, asking clarifying questions.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: JAIL on Daniel
+- Night 2: JAIL on Michael
+- Night 3: JAIL on Olivia
+- Night 4: JAIL on Emily
+- Night 5: JAIL on Steponas
+- Night 6: JAIL on Emily
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 6: WAS_TURNED - You were bitten and turned into a Vampire. You are now evil.
+
+========================================
+NPC: Daniel
+========================================
+Role: Lookout (good)
+Status: Alive
+Personality: A moderately quiet player who listens intently, is balanced in trust, but can become slightly defensive when directly accused, leaning on intuition initially.
+Talking Style: Speaks thoughtfully and politely, using clear, neutral language, often waiting for a solid point before contributing.
+Gender: male
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: LOOKOUT on Michael
+- Night 2: LOOKOUT on Emily → RESULT: No one visited.
+- Night 3: LOOKOUT on Michael
+- Night 4: LOOKOUT on Sarah
+- Night 5: LOOKOUT on Olivia
+- Night 6: LOOKOUT on Sarah
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Sarah
+
+========================================
+NPC: Olivia
+========================================
+Role: Investigator (good)
+Status: Alive
+Personality: Olivia is a moderately talkative player, balanced in her trust, who uses both intuition and logic, and can be assertive when necessary.
+Talking Style: Her communication is clear and direct, using varied sentence structures, maintaining a polite but firm tone.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Emily
+- Night 2: INVESTIGATE on Michael → RESULT: Target is a Vampire
+- Night 3: INVESTIGATE on Daniel → RESULT: Target is a Lookout
+- Night 4: INVESTIGATE on Steponas
+- Night 5: INVESTIGATE on Emily → RESULT: Target is a Vampire
+- Night 6: INVESTIGATE on Steponas → RESULT: Target is a Jester
+- Night 7: INVESTIGATE on Sarah
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 3: WAS_JAILED by Sarah
+- Night 3: WAS_RELEASED by Sarah - The Jailor released you without executing.
+
+========================================
+NPC: Emily
+========================================
+Role: Vampire (evil)
+Status: Alive (Turned to Vampire)
+Personality: A moderately talkative player, leans logical in deductions, but can become somewhat defensive when directly accused.
+Talking Style: Communicates clearly and directly, typically neutral in tone but can get more pointed if challenged.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 2: HEAL on Sarah
+- Night 4: BITE on Daniel
+- Night 6: BITE on Sarah
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 2: WAS_TURNED - You were bitten and turned into a Vampire. You are now evil.
+- Night 4: WAS_JAILED by Sarah
+- Night 6: WAS_JAILED by Sarah
+- Night 6: WAS_RELEASED by Sarah - The Jailor released you without executing.
+
+========================================
+NPC: Michael
+========================================
+Role: Vampire (evil)
+Status: Dead
+Personality: A logical and moderately talkative player, generally balanced in trust but capable of moderate defensiveness if directly accused.
+Talking Style: Clear and direct, uses varied sentence structures to explain reasoning, generally polite but can be firm.
+Gender: male
+Fake Role (claimed): Doctor
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 2: BITE on Emily
+- Night 4: BITE on Sarah
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 2: WAS_JAILED by Sarah
+- Night 2: WAS_RELEASED by Sarah - The Jailor released you without executing.
+
+========================================
+END OF REPORT
+========================================

@@ -1,0 +1,88 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: WC6ND
+Start Time: 2025-12-26T21:34:48.751Z
+End Time: 2025-12-26T21:40:23.375Z
+Total NPCs: 5
+
+========================================
+NPC: Jessica
+========================================
+Role: Doctor (good)
+Status: Alive
+Personality: Moderately talkative and generally balanced in trust, but becomes more analytical and assertive when trying to deduce roles.
+Talking Style: Speaks clearly and directly, using varied sentence structures and a polite but firm tone.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 2: HEAL on Steponas
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Steponas
+- Night 1: WAS_RELEASED by Steponas - The Jailor released you without executing.
+
+========================================
+NPC: Chloe
+========================================
+Role: Vampire (evil)
+Status: Alive
+Personality: A moderately talkative and logical player who approaches discussions with a balanced skepticism, becoming moderately assertive when presenting her findings.
+Talking Style: She speaks clearly and directly, using thoughtful word choice. Her tone is neutral, and she tends to structure her arguments logically.
+Gender: female
+Fake Role (claimed): Investigator
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Emily → RESULT: Target is a Lookout
+- Night 2: INVESTIGATE on Olivia → RESULT: Target is a Jester
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Olivia
+========================================
+Role: Jester (neutral)
+Status: Alive
+Personality: Moderately talkative, Olivia is a balanced player who trusts reasonably but will be assertive with her logical deductions. She's not easily defensive.
+Talking Style: Clear and direct, Olivia uses neutral formality, varying sentence length to articulate her thoughts naturally.
+Gender: female
+Fake Role (claimed): Investigator
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Chloe → RESULT: Target is a Vampire
+- Night 2: INVESTIGATE on Emily → RESULT: Target is a Lookout
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Sarah
+========================================
+Role: Investigator (good)
+Status: Dead
+Personality: Moderately talkative and generally trusting, but can become somewhat defensive if directly questioned. Tends to balance intuition with logic.
+Talking Style: Speaks clearly and politely, with a neutral tone. Direct questions, varying sentence length, avoids excessive jargon.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Chloe → RESULT: Target is a Vampire
+- Night 2: INVESTIGATE on Jessica → RESULT: Target is a Doctor
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 2: WAS_JAILED by Steponas
+
+========================================
+NPC: Emily
+========================================
+Role: Lookout (good)
+Status: Alive
+Personality: A moderately talkative and observant player, generally balanced in trust, but can be assertive and logical when suspicions arise.
+Talking Style: Clear and direct, she uses varied sentence structures. She asks probing questions and prefers a methodical approach.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: LOOKOUT on Chloe → RESULT: No one visited.
+- Night 2: LOOKOUT on Jessica → RESULT: No one visited.
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+END OF REPORT
+========================================

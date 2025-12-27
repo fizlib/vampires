@@ -1,0 +1,81 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: TV2PA
+Start Time: 2025-12-26T21:25:22.343Z
+End Time: 2025-12-26T21:28:59.657Z
+Total NPCs: 5
+
+========================================
+NPC: Lukas
+========================================
+Role: Doctor (good)
+Status: Alive
+Personality: Moderately talkative and logically analytical, Lukas approaches the game with cautious optimism and asserts his points respectfully.
+Talking Style: Speaks clearly and concisely, using a neutral tone with varying sentence lengths, often asking probing questions.
+Gender: male
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Dainius
+- Night 1: WAS_RELEASED by Dainius - The Jailor released you without executing.
+
+========================================
+NPC: Marius
+========================================
+Role: Vampire (evil)
+Status: Alive
+Personality: Moderately talkative and balanced in trust, Marius leans logical but can become moderately defensive when directly questioned.
+Talking Style: Speaks clearly and directly, using varied sentence structures and polite but firm word choice.
+Gender: male
+Fake Role (claimed): Lookout
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: LOOKOUT on Gabija → RESULT: No one visited.
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Dainius
+========================================
+Role: Jailor (good)
+Status: Alive
+Personality: A moderately talkative player, Dainius is a logical thinker with a balanced trust level, becoming moderately assertive when presenting his case.
+Talking Style: Speaks clearly and directly, using varied sentence structures to convey logical arguments politely.
+Gender: male
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: JAIL on Lukas
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Gabija
+========================================
+Role: Lookout (good)
+Status: Alive
+Personality: Somewhat quiet and analytical, Gabija is cautiously trusting. She speaks her mind assertively but can become mildly defensive when challenged directly.
+Talking Style: Speaks clearly and directly, using neutral language. She asks polite questions and presents thoughts concisely.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: LOOKOUT on Marius → RESULT: No one visited.
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Indrė
+========================================
+Role: Investigator (good)
+Status: Alive
+Personality: A balanced thinker, she's moderately talkative, preferring to analyze before speaking, and can be subtly assertive when presenting her views.
+Talking Style: Speaks clearly and directly, using thoughtful, moderate-length sentences, leaning towards neutral formality with politeness.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Marius → RESULT: Target is a Vampire
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+END OF REPORT
+========================================

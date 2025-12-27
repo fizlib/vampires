@@ -1,0 +1,80 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: WIW3K
+Start Time: 2025-12-26T21:29:09.329Z
+End Time: 2025-12-26T21:34:27.562Z
+Total NPCs: 5
+
+========================================
+NPC: Olivia
+========================================
+Role: Investigator (good)
+Status: Alive
+Personality: Olivia is a moderately talkative and open-minded player, usually balanced in her analysis, and fairly assertive when sharing her thoughts.
+Talking Style: Clear and direct communication, with a neutral, polite tone and naturally varied sentence length.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Daniel → RESULT: Target is a Lookout
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Jessica
+========================================
+Role: Doctor (good)
+Status: Alive
+Personality: Moderately talkative and balanced, Jessica uses intuition to form opinions, becoming moderately assertive and slightly defensive if directly questioned.
+Talking Style: She speaks clearly and directly, using varied sentence structures and maintaining a polite yet firm tone.
+Gender: female
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: David
+========================================
+Role: Jester (neutral)
+Status: Alive
+Personality: David is a moderately talkative and logical player, approaching the game with a balanced skepticism and assertively presenting his observations.
+Talking Style: Speaks clearly and directly with a neutral tone. Uses well-structured sentences, offering concise points and brief explanations.
+Gender: male
+Fake Role (claimed): Citizen
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Daniel
+========================================
+Role: Lookout (good)
+Status: Alive
+Personality: A moderately talkative player who approaches discussions with a balanced skepticism, often trying to analyze different perspectives.
+Talking Style: Speaks clearly and directly, often asking follow-up questions to understand nuances.
+Gender: male
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: LOOKOUT on Steponas → RESULT: No one visited.
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Sarah
+- Night 1: WAS_RELEASED by Sarah - The Jailor released you without executing.
+
+========================================
+NPC: Sarah
+========================================
+Role: Jailor (good)
+Status: Alive
+Personality: A moderately talkative player who approaches discussions with a balanced skepticism, relying on both intuition and careful observation.
+Talking Style: Polite but direct, using clear, concise language to express her thoughts and questions.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: JAIL on Daniel
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+END OF REPORT
+========================================
