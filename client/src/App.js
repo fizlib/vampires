@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 
@@ -285,7 +285,7 @@ function App() {
     }
 
     prevGameState.current = gameState;
-  }, [gameState]);
+  }, [gameState, gameChat]);
 
   // Request microphone permission when game starts (if voice chat is enabled)
   useEffect(() => {
@@ -407,7 +407,7 @@ function App() {
         stopVADListening();
       }
     };
-  }, [gameState?.state, gameState?.players, myId, gameState?.voiceInputMode, gameState?.enableSTT, sttAvailable]);
+  }, [gameState?.state, gameState?.players, myId, gameState?.voiceInputMode, gameState?.enableSTT, sttAvailable, isListening, startVADListening, stopVADListening]);
 
   // Handle theme change
   const changeTheme = (theme) => {
