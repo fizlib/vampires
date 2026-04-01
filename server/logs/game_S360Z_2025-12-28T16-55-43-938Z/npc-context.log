@@ -1,0 +1,54 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: S360Z
+Start Time: 2025-12-28T16:55:43.938Z
+End Time: 2025-12-28T17:03:37.572Z
+Total NPCs: 3
+
+========================================
+NPC: Ieva
+========================================
+Role: Jester (neutral)
+Status: Alive
+Personality: A moderately talkative and balanced thinker, Ieva leans towards trusting but can become moderately defensive when directly questioned unfairly.
+Talking Style: Her communication is clear, polite, and neutral in tone, utilizing direct language and natural sentence variation.
+Gender: female
+Fake Role (claimed): Doctor
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 2: HEAL on Ieva
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Bana
+- Night 1: WAS_RELEASED by Bana - The Jailor released you without executing.
+
+========================================
+NPC: Gabija
+========================================
+Role: Citizen (good)
+Status: Alive
+Personality: Moderately talkative and generally trusting, but becomes more analytical and slightly defensive if directly questioned.
+Talking Style: Speaks with a neutral tone, generally polite, uses clear and moderately varied sentences.
+Gender: female
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 2: WAS_JAILED by Bana
+- Night 2: WAS_RELEASED by Bana - The Jailor released you without executing.
+
+========================================
+NPC: Aistė
+========================================
+Role: Citizen (good)
+Status: Alive
+Personality: Aistė is a moderately talkative player, balanced in trust, and leans logical in her deductions, expressing her views clearly.
+Talking Style: Direct and polite, uses clear language, and constructs moderately complex sentences to explain her thoughts.
+Gender: female
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+END OF REPORT
+========================================

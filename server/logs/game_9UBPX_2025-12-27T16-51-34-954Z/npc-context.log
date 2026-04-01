@@ -1,0 +1,80 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: 9UBPX
+Start Time: 2025-12-27T16:51:34.954Z
+End Time: 2025-12-27T16:53:18.922Z
+Total NPCs: 5
+
+========================================
+NPC: Miglė
+========================================
+Role: Jailor (good)
+Status: Alive
+Personality: Moderately talkative and generally trusting, but becomes more assertive and analytical when suspicions arise.
+Talking Style: Engaging and friendly, uses natural sentence structures, can be direct when explaining her reasoning.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: JAIL on Lukas
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Lukas
+========================================
+Role: Doctor (good)
+Status: Alive
+Personality: A moderately talkative and analytical player, somewhat skeptical but open to evidence, and moderately assertive when presenting findings.
+Talking Style: Speaks clearly and directly, using varied sentence structures. Generally polite but can be pointed when questioning.
+Gender: male
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Miglė
+
+========================================
+NPC: Viltė
+========================================
+Role: Investigator (good)
+Status: Alive
+Personality: Viltė is a moderately talkative player, balanced in trust, who applies both intuition and logic. She becomes moderately assertive when discussing theories.
+Talking Style: Her speech is usually neutral and clear, using varied sentence lengths. She asks clarifying questions politely.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Lukas
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Linas
+========================================
+Role: Jester (neutral)
+Status: Alive
+Personality: An observant and moderately logical player, slightly skeptical but willing to be swayed by clear evidence, and quietly assertive.
+Talking Style: Speaks with a clear, measured tone. Uses precise language, often asking direct, clarifying questions without being impolite.
+Gender: male
+Fake Role (claimed): Doctor
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Miglė
+========================================
+Role: Vampire (evil)
+Status: Alive
+Personality: Somewhat quiet and moderately analytical, Miglė observes keenly, remaining slightly skeptical until compelling evidence emerges.
+Talking Style: Speaks thoughtfully with precise word choice, often using a neutral, direct tone, and asks pointed clarifying questions.
+Gender: female
+Fake Role (claimed): Investigator
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Steponas
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+END OF REPORT
+========================================

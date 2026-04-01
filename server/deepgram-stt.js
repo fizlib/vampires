@@ -57,13 +57,13 @@ class DeepgramSTTController {
             };
             const languageCode = languageCodeMap[language] || 'en';
 
-            console.log(`[STT] Deepgram: Transcribing audio (${language}, ${audioBuffer.length} bytes)...`);
+            console.log(`[STT] Deepgram: Transcribing audio (language=${language} -> ${languageCode}, ${audioBuffer.length} bytes, model=nova-3-general)...`);
 
             // Use Deepgram's pre-recorded transcription with NOVA-3 model
             const { result, error } = await this.client.listen.prerecorded.transcribeFile(
                 audioBuffer,
                 {
-                    model: 'nova-3',
+                    model: 'nova-3-general',
                     language: languageCode,
                     smart_format: true,
                     punctuate: true,

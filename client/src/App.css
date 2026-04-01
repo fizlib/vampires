@@ -154,7 +154,7 @@
   background-clip: text;
 }
 
-/* Christmas Theme (Base/Default - for menu/lobby) */
+/* Christmas Theme (Base - for menu/lobby) */
 [data-theme="christmas"] {
   --bg-color: #0a1f0a;
   --card-bg: #142214;

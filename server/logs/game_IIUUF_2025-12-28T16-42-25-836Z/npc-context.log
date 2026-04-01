@@ -1,0 +1,27 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: IIUUF
+Start Time: 2025-12-28T16:42:25.836Z
+End Time: 2025-12-28T16:54:46.187Z
+Total NPCs: 1
+
+========================================
+NPC: Emily
+========================================
+Role: Vampire (evil)
+Status: Alive
+Personality: Emily is a balanced player, moderately talkative and analytical, who trusts cautiously but becomes assertive when she identifies inconsistencies.
+Talking Style: Communicates clearly and directly, using neutral language and asking pointed, fact-checking questions.
+Gender: female
+Fake Role (claimed): Investigator
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Robertas → RESULT: Target is a Vampire Framer
+- Night 2: BITE on Mykolas
+- Night 3: INVESTIGATE on Steponas → RESULT: Target is a Vampire
+- Night 4: INVESTIGATE on ANTANOVIČIUS ANTANAS → RESULT: Target is a Jester
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+END OF REPORT
+========================================

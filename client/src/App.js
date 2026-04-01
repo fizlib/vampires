@@ -197,10 +197,10 @@ function App() {
     return defaultConfig;
   });
 
-  // Theme selection - default to Christmas theme
+  // Theme selection - default to dark theme
   const [selectedTheme, setSelectedTheme] = useState(() => {
     const savedTheme = localStorage.getItem('vampire_theme');
-    return savedTheme || 'christmas'; // Default to Christmas theme
+    return savedTheme || 'dark'; // Default to dark theme
   });
   
   // Voice Activity Detection (VAD) functions - defined early to avoid "use before define"

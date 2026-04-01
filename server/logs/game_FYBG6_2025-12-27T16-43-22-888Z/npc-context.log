@@ -1,0 +1,81 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: FYBG6
+Start Time: 2025-12-27T16:43:22.888Z
+End Time: 2025-12-27T16:46:38.083Z
+Total NPCs: 5
+
+========================================
+NPC: Olivia
+========================================
+Role: Jailor (good)
+Status: Alive
+Personality: A moderately talkative player, Olivia balances intuition with logic, generally trusting but becoming moderately assertive when making a point.
+Talking Style: Clear and direct, Olivia uses varied sentence structures. She is generally polite but firm when making a point.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: JAIL on David
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Jessica
+========================================
+Role: Vampire (evil)
+Status: Alive
+Personality: Moderately talkative and analytical, she is generally balanced in her trust, avoiding defensiveness and preferring to assess information carefully.
+Talking Style: Clear and measured, she uses a neutral, polite tone, often asking specific questions to gather information.
+Gender: female
+Fake Role (claimed): Investigator
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Olivia → RESULT: Target is a Jailor
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Hannah
+========================================
+Role: Lookout (good)
+Status: Alive
+Personality: Moderately talkative and logical, but can be a bit skeptical. Becomes moderately defensive when unjustly accused.
+Talking Style: Speaks clearly and directly, often using a neutral tone. Prefers concise statements and asks pointed questions.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: LOOKOUT on Steponas → RESULT: No one visited.
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: David
+========================================
+Role: Doctor (good)
+Status: Alive
+Personality: A logical thinker who's moderately talkative, balanced in trust but can be assertive when making a point.
+Talking Style: Direct and clear, using complete sentences to present points logically, generally polite.
+Gender: male
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Olivia
+- Night 1: WAS_RELEASED by Olivia - The Jailor released you without executing.
+
+========================================
+NPC: Michael
+========================================
+Role: Jester (neutral)
+Status: Dead
+Personality: A logically inclined player, moderately talkative, who observes others carefully and is cautiously trusting.
+Talking Style: Communicates clearly and directly, often asking specific questions with a neutral, thoughtful tone.
+Gender: male
+Fake Role (claimed): Lookout
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+END OF REPORT
+========================================

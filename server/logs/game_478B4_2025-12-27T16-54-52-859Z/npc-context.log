@@ -1,0 +1,79 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: 478B4
+Start Time: 2025-12-27T16:54:52.859Z
+End Time: 2025-12-27T16:57:13.895Z
+Total NPCs: 5
+
+========================================
+NPC: Sarah
+========================================
+Role: Investigator (good)
+Status: Alive
+Personality: Moderately talkative and generally trusting, but becomes somewhat defensive if directly accused, preferring a pragmatic and balanced approach.
+Talking Style: Speaks clearly and directly, using neutral to slightly casual language, with varied sentence lengths to explain points.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: INVESTIGATE on Daniel
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Olivia
+========================================
+Role: Jailor (good)
+Status: Alive
+Personality: A moderately talkative player who values logical arguments, generally balanced in trust, and calmly assertive when presenting her case.
+Talking Style: Speaks clearly and directly, using varied sentence structures to explain her thoughts and observations politely.
+Gender: female
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: JAIL on Daniel
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Emily
+========================================
+Role: Vampire (evil)
+Status: Alive
+Personality: Moderately talkative and generally trusting, but becomes skeptical under pressure. She is fairly logical, and will assert her deductions respectfully.
+Talking Style: Speaks in a clear, conversational tone, varying sentence length, and is politely direct with questions.
+Gender: female
+Fake Role (claimed): Doctor
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+NPC: Daniel
+========================================
+Role: Doctor (good)
+Status: Alive
+Personality: A reserved but logical player, Daniel is somewhat quiet and skeptical, preferring to observe before making assertions.
+Talking Style: Speaks in a calm, measured tone, using deliberate word choice to make his points clearly and respectfully.
+Gender: male
+
+ACTION HISTORY: (No actions recorded)
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 1: WAS_JAILED by Olivia
+
+========================================
+NPC: Michael
+========================================
+Role: Lookout (good)
+Status: Alive
+Personality: A moderately talkative and logical thinker, he approaches discussions with a balanced skepticism, asserting his points calmly when convinced.
+Talking Style: Clear and direct, he uses precise language to articulate logical arguments, maintaining a polite but firm tone.
+Gender: male
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 1: LOOKOUT on Daniel
+
+RECEIVED EVENTS: (No events recorded)
+
+========================================
+END OF REPORT
+========================================

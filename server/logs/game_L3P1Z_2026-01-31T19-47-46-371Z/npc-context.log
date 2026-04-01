@@ -1,0 +1,24 @@
+=== GAME NPC CONTEXT MEMORY REPORT ===
+Game Code: L3P1Z
+Start Time: 2026-01-31T19:47:46.371Z
+End Time: 2026-01-31T20:02:23.967Z
+Total NPCs: 1
+
+========================================
+NPC: Michael
+========================================
+Role: Vampire (evil)
+Status: Alive (Turned to Vampire)
+Personality: Michael is moderately talkative, logical, and balanced in trust. He tends to be moderately assertive when discussing facts, avoiding strong emotional reactions.
+Talking Style: Direct and factual, he uses clear, concise language. He's polite but won't shy from questioning others logically.
+Gender: male
+
+ACTION HISTORY (Actions performed BY this NPC):
+- Night 2: HEAL on Michael
+
+RECEIVED EVENTS (Events that happened TO this NPC):
+- Night 4: WAS_TURNED - You were bitten and turned into a Vampire. You are now evil.
+
+========================================
+END OF REPORT
+========================================
