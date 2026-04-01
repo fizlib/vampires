@@ -2,11 +2,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 
-// Dynamically connect to the server using the current hostname
-// This allows the app to work both on localhost and when accessed via IP address
-// Connect to relative path - requests will be proxied to backend (https://localhost:3001)
-// This works because of src/setupProxy.js configuration
-const socket = io();
+// Use REACT_APP_SERVER_URL from environment or default to current host (for local dev)
+const SERVER_URL = process.env.REACT_APP_SERVER_URL || '';
+const socket = io(SERVER_URL);
 
 // Random username generator
 const generateRandomUsername = () => {
@@ -159,6 +157,7 @@ function App() {
       enableSTT: false,
       voiceInputMode: 'push-to-talk',
       ttsProvider: 'google',
+      sttProvider: 'deepgram',
       elevenlabsModel: 'eleven_turbo_v2_5',
       npcNationality: 'english',
       npcAllowedRoles: {
@@ -1413,6 +1412,23 @@ function App() {
                     />
                     🎤 Enable Voice Chat {!sttAvailable && '(Not Available)'}
                   </label>
+                </div>
+              )}
+              {settings.enableAI && settings.enableSTT && sttAvailable && (
+                <div className="game-setting-item">
+                  <label>STT Provider:</label>
+                  <select
+                    value={settings.sttProvider || 'deepgram'}
+                    onChange={e => {
+                      const newSettings = { ...settings, sttProvider: e.target.value };
+                      setSettings(newSettings);
+                      localStorage.setItem('vampire_settings', JSON.stringify(newSettings));
+                      socket.emit('update_settings', { code, settings: newSettings });
+                    }}
+                  >
+                    <option value="deepgram">Deepgram NOVA-3</option>
+                    <option value="google">Google Cloud STT</option>
+                  </select>
                 </div>
               )}
               {settings.enableAI && settings.enableSTT && sttAvailable && (

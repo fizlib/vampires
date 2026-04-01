@@ -56,7 +56,10 @@ const server = http.createServer(app);
 const protocol = 'http';
 
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
+    cors: {
+        origin: "*", // In production, you might want to restrict this to your Vercel URL
+        methods: ["GET", "POST"]
+    }
 });
 
 // In-memory storage
@@ -1463,11 +1466,13 @@ io.on('connection', (socket) => {
         }
       }
 
-      // Re-initialize STT controller if enableSTT changed
-      if (settings.enableSTT !== undefined) {
-        const shouldUseSTT = settings.enableSTT;
+      // Re-initialize STT controller if enableSTT or sttProvider changed
+      if (settings.enableSTT !== undefined || settings.sttProvider !== undefined) {
+        const shouldUseSTT = settings.enableSTT ?? game.settings.enableSTT;
+        const provider = settings.sttProvider || game.settings.sttProvider;
+
         if (shouldUseSTT) {
-          game.stt = googleSTTController;
+          game.stt = getSTTController(provider);
         } else {
           game.stt = null;
         }
@@ -2063,8 +2068,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Listen on 0.0.0.0 to accept connections from all network interfaces
-// This allows other devices on the network to connect via your IP address
-server.listen(3001, '0.0.0.0', () => {
-  console.log(`Server running on port 3001 using ${protocol.toUpperCase()} (accessible from all interfaces)`);
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT} using ${protocol.toUpperCase()} (accessible from all interfaces)`);
 });
