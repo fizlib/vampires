@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 
@@ -202,6 +202,131 @@ function App() {
     const savedTheme = localStorage.getItem('vampire_theme');
     return savedTheme || 'christmas'; // Default to Christmas theme
   });
+  
+  // Voice Activity Detection (VAD) functions - defined early to avoid "use before define"
+  const stopVADListening = useCallback(() => {
+    setIsListening(false);
+    setAudioLevel(0);
+
+    if (vadTimeoutRef.current) {
+      cancelAnimationFrame(vadTimeoutRef.current);
+      vadTimeoutRef.current = null;
+    }
+
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop());
+      audioStreamRef.current = null;
+    }
+  }, []);
+
+  const startVADListening = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+
+      // Set up audio analysis for VAD
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioContextRef.current = audioContext;
+      const analyser = audioContext.createAnalyser();
+      analyserRef.current = analyser;
+      analyser.fftSize = 256;
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let isCurrentlyRecording = false;
+      let audioChunks = [];
+      let mediaRecorder = null;
+      let cooldownUntil = 0; // Timestamp until which new recordings are blocked
+
+      const SILENCE_THRESHOLD = 25; // Audio level threshold
+      const SILENCE_DURATION = 800; // ms of silence before stopping recording
+      const COOLDOWN_DURATION = 1000; // ms to wait after sending before allowing new recording
+
+      const checkAudioLevel = () => {
+        if (!analyserRef.current) return;
+
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        setAudioLevel(Math.min(100, average * 2)); // Scale for visual indicator
+
+        const now = Date.now();
+
+        if (average > SILENCE_THRESHOLD) {
+          // Voice detected
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+          }
+
+          // Only start recording if not in cooldown period
+          if (!isCurrentlyRecording && now >= cooldownUntil) {
+            // Start recording
+            isCurrentlyRecording = true;
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+
+            mediaRecorder.ondataavailable = (event) => {
+              if (event.data.size > 0) {
+                audioChunks.push(event.data);
+              }
+            };
+
+            mediaRecorder.onstop = () => {
+              if (audioChunks.length > 0) {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const base64Audio = reader.result.split(',')[1];
+                  socket.emit('voice_audio_chunk', { code, audioChunk: base64Audio });
+                  // Set cooldown to prevent immediate re-recording
+                  cooldownUntil = Date.now() + COOLDOWN_DURATION;
+                };
+                reader.readAsDataURL(audioBlob);
+              }
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+          }
+        } else if (isCurrentlyRecording && !silenceTimeoutRef.current) {
+          // Silence detected while recording, start countdown
+          silenceTimeoutRef.current = setTimeout(() => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+              mediaRecorder.stop();
+              isCurrentlyRecording = false;
+              setIsRecording(false);
+            }
+            silenceTimeoutRef.current = null;
+          }, SILENCE_DURATION);
+        }
+
+        vadTimeoutRef.current = requestAnimationFrame(checkAudioLevel);
+      };
+
+      setIsListening(true);
+      checkAudioLevel();
+    } catch (err) {
+      console.error('[Voice VAD] Microphone access denied:', err);
+      alert('Microphone access denied. Please allow microphone permissions in your browser settings.');
+    }
+  }, [code]);
 
   // 1. Check for existing session on load and attempt rejoin
   useEffect(() => {
@@ -781,130 +906,7 @@ function App() {
     }
   };
 
-  // Voice Activity Detection (VAD) functions
-  const startVADListening = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioStreamRef.current = stream;
-
-      // Set up audio analysis for VAD
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      audioContextRef.current = audioContext;
-      const analyser = audioContext.createAnalyser();
-      analyserRef.current = analyser;
-      analyser.fftSize = 256;
-      const source = audioContext.createMediaStreamSource(stream);
-      source.connect(analyser);
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      let isCurrentlyRecording = false;
-      let audioChunks = [];
-      let mediaRecorder = null;
-      let cooldownUntil = 0; // Timestamp until which new recordings are blocked
-
-      const SILENCE_THRESHOLD = 25; // Audio level threshold
-      const SILENCE_DURATION = 800; // ms of silence before stopping recording
-      const COOLDOWN_DURATION = 1000; // ms to wait after sending before allowing new recording
-
-      const checkAudioLevel = () => {
-        if (!analyserRef.current) return;
-
-        analyser.getByteFrequencyData(dataArray);
-        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        setAudioLevel(Math.min(100, average * 2)); // Scale for visual indicator
-
-        const now = Date.now();
-
-        if (average > SILENCE_THRESHOLD) {
-          // Voice detected
-          if (silenceTimeoutRef.current) {
-            clearTimeout(silenceTimeoutRef.current);
-            silenceTimeoutRef.current = null;
-          }
-
-          // Only start recording if not in cooldown period
-          if (!isCurrentlyRecording && now >= cooldownUntil) {
-            // Start recording
-            isCurrentlyRecording = true;
-            audioChunks = [];
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorderRef.current = mediaRecorder;
-
-            mediaRecorder.ondataavailable = (event) => {
-              if (event.data.size > 0) {
-                audioChunks.push(event.data);
-              }
-            };
-
-            mediaRecorder.onstop = () => {
-              if (audioChunks.length > 0) {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                  const base64Audio = reader.result.split(',')[1];
-                  socket.emit('voice_audio_chunk', { code, audioChunk: base64Audio });
-                  // Set cooldown to prevent immediate re-recording
-                  cooldownUntil = Date.now() + COOLDOWN_DURATION;
-                };
-                reader.readAsDataURL(audioBlob);
-              }
-            };
-
-            mediaRecorder.start();
-            setIsRecording(true);
-          }
-        } else if (isCurrentlyRecording && !silenceTimeoutRef.current) {
-          // Silence detected while recording, start countdown
-          silenceTimeoutRef.current = setTimeout(() => {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-              mediaRecorder.stop();
-              isCurrentlyRecording = false;
-              setIsRecording(false);
-            }
-            silenceTimeoutRef.current = null;
-          }, SILENCE_DURATION);
-        }
-
-        vadTimeoutRef.current = requestAnimationFrame(checkAudioLevel);
-      };
-
-      setIsListening(true);
-      checkAudioLevel();
-    } catch (err) {
-      console.error('[Voice VAD] Microphone access denied:', err);
-      alert('Microphone access denied. Please allow microphone permissions in your browser settings.');
-    }
-  };
-
-  const stopVADListening = () => {
-    setIsListening(false);
-    setAudioLevel(0);
-
-    if (vadTimeoutRef.current) {
-      cancelAnimationFrame(vadTimeoutRef.current);
-      vadTimeoutRef.current = null;
-    }
-
-    if (silenceTimeoutRef.current) {
-      clearTimeout(silenceTimeoutRef.current);
-      silenceTimeoutRef.current = null;
-    }
-
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-    setIsRecording(false);
-
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-
-    if (audioStreamRef.current) {
-      audioStreamRef.current.getTracks().forEach(track => track.stop());
-      audioStreamRef.current = null;
-    }
-  };
+  // (VAD functions moved higher up to avoid "use before define")
 
   const logout = () => {
     clearSession();
