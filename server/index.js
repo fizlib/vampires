@@ -50,6 +50,10 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const app = express();
 app.use(cors());
 
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Create server - use HTTP for now (HTTPS causes certificate issues)
 // The simplest solution is to keep the server on HTTP and handle HTTPS at the client level
 const server = http.createServer(app);
