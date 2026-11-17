@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <!-- Mask for the bars to create a gap around the keyhole -->
+    <mask id="bars-gap-mask">
+      <rect width="100%" height="100%" fill="white" />
+      <!-- Black shape cuts out the bars -->
+      <path d="M 72.9 106 A 31 31 0 1 1 127.1 106 L 132 136 L 68 136 Z" 
+            fill="black" stroke="black" stroke-width="8" stroke-linejoin="round"/>
+    </mask>
+    <!-- Mask for the keyhole body to cut out the keyhole hole -->
+    <mask id="keyhole-hole-mask">
+      <rect width="100%" height="100%" fill="white" />
+      <!-- Black shape cuts out the inner hole -->
+      <path d="M 89.1 99 A 13.5 13.5 0 1 1 110.9 99 L 116.5 125 L 83.5 125 Z" 
+            fill="black" stroke="black" stroke-width="3" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  
+  <g fill="#ffffff">
+    <!-- Top Horizontal Bar -->
+    <polygon points="25,35 175,35 170,48 30,48"/>
+    
+    <!-- Top Arrow -->
+    <polygon points="100,12 115,27 105,27 105,35 95,35 95,27 85,27"/>
+    
+    <!-- Bottom Horizontal Bar -->
+    <polygon points="30,152 170,152 175,165 25,165"/>
+    
+    <!-- Bottom Arrow -->
+    <polygon points="100,188 115,173 105,173 105,165 95,165 95,173 85,173"/>
+    
+    <!-- Vertical Bars with keyhole gap cut out -->
+    <g mask="url(#bars-gap-mask)">
+      <rect x="35" y="48" width="10" height="104"/>
+      <rect x="65" y="48" width="10" height="104"/>
+      <rect x="95" y="48" width="10" height="104"/>
+      <rect x="125" y="48" width="10" height="104"/>
+      <rect x="155" y="48" width="10" height="104"/>
+    </g>
+    
+    <!-- Outer Keyhole with inner keyhole hole cut out -->
+    <path d="M 72.9 106 A 31 31 0 1 1 127.1 106 L 132 136 L 68 136 Z" 
+          mask="url(#keyhole-hole-mask)"/>
+  </g>
+</svg>

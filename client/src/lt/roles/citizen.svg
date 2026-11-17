@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <mask id="citizen-mask">
+      <!-- Background of mask: black means hidden -->
+      <rect width="100%" height="100%" fill="black" />
+
+      <!-- Body Silhouette Base (White = visible) -->
+      <path d="
+        M 85 112
+        C 60 113 35 130 25 170
+        L 25 205
+        L 175 205
+        L 175 170
+        C 165 130 140 113 115 112
+        Q 100 114 85 112
+        Z" fill="white" />
+
+      <!-- Head Silhouette Outer (White = visible) -->
+      <path d="
+        M 100 108
+        C 78 108 65 92 64 72
+        C 53 72 53 54 64 54
+        C 64 40 68 28 82 21
+        L 86 25
+        C 96 10 115 12 128 22
+        C 135 28 136 40 136 54
+        C 147 54 147 72 136 72
+        C 135 92 122 108 100 108 Z" fill="white" />
+
+      <!-- Face Inner Cutout (Black = hidden) -->
+      <path d="
+        M 100 97
+        C 82 97 72 82 72 62
+        C 72 50 75 42 80 37
+        C 84 34 86 38 88 42
+        C 98 32 112 30 125 35
+        C 129 40 129 48 129 62
+        C 129 82 118 97 100 97 Z" fill="black" />
+
+      <!-- Left Vest / Lapel Curve (Black = hidden) -->
+      <path d="
+        M 65 111
+        C 75 140 82 160 82 205
+        L 92 205
+        C 92 160 85 130 80 111
+        Z" fill="black" />
+
+      <!-- Right Vest / Lapel Curve (Black = hidden) -->
+      <path d="
+        M 135 111
+        C 125 140 118 160 118 205
+        L 108 205
+        C 108 160 115 130 120 111
+        Z" fill="black" />
+
+      <!-- Inner Shirt Details (Black lines = hidden) -->
+      <!-- Left Collar Diagonal Line -->
+      <line x1="80" y1="113" x2="96" y2="124" stroke="black" stroke-width="3" stroke-linecap="round" />
+      
+      <!-- Right Collar Diagonal Line -->
+      <line x1="120" y1="113" x2="104" y2="124" stroke="black" stroke-width="3" stroke-linecap="round" />
+
+      <!-- Tie Knot (White knot shape with black outline) -->
+      <polygon points="100,116 106,124 100,132 94,124" fill="white" stroke="black" stroke-width="2.5" stroke-linejoin="round" />
+
+      <!-- Shirt Buttons (Black = hidden) -->
+      <circle cx="100" cy="150" r="3.2" fill="black" />
+      <circle cx="100" cy="168" r="3.2" fill="black" />
+      <circle cx="100" cy="186" r="3.2" fill="black" />
+    </mask>
+  </defs>
+
+  <!-- The visible shape is a white square masked with citizen-mask -->
+  <rect width="100%" height="100%" fill="#ffffff" mask="url(#citizen-mask)" />
+</svg>

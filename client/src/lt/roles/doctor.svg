@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <mask id="doctor-mask">
+      <!-- Everything white is visible -->
+      <rect width="100%" height="100%" fill="white" />
+      <!-- Black ECG line cuts out of the white shape -->
+      <path d="M 80 250 
+               L 180 250 
+               L 195 220 
+               L 215 270 
+               L 245 180 
+               L 270 320 
+               L 295 250 
+               L 420 250" 
+            stroke="black" 
+            stroke-width="16" 
+            stroke-linecap="round" 
+            stroke-linejoin="miter" 
+            stroke-miterlimit="10" 
+            fill="none" />
+    </mask>
+  </defs>
+
+  <!-- The medical cross masked with the doctor-mask -->
+  <g fill="#ffffff" mask="url(#doctor-mask)">
+    <rect x="175" y="40" width="150" height="420" rx="20" />
+    <rect x="40" y="175" width="420" height="150" rx="20" />
+  </g>
+</svg>

@@ -5,6 +5,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Dark start colour so there is no white flash while the language's stylesheet loads */
+  background-color: #121212;
 }
 
 code {
